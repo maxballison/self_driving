@@ -1,0 +1,31 @@
+[gd_scene load_steps=2 format=3 uid="uid://dc4jsm8e5n02i"]
+
+[ext_resource type="Script" path="res://CodeEditor.gd" id="1_8ldxc"]
+
+[node name="CodeEditor" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_8ldxc")
+
+[node name="TextEdit" type="TextEdit" parent="."]
+custom_minimum_size = Vector2(200, 200)
+layout_mode = 0
+offset_left = 23.0
+offset_top = 124.0
+offset_right = 223.0
+offset_bottom = 324.0
+text = "func run():
+	move(\"South\")"
+
+[node name="RunButton" type="Button" parent="."]
+custom_minimum_size = Vector2(50, 30)
+layout_mode = 0
+offset_left = 171.0
+offset_top = 95.0
+offset_right = 221.0
+offset_bottom = 126.0
+text = "Run"

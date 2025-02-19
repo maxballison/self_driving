@@ -1,0 +1,18 @@
+[gd_scene load_steps=5 format=3 uid="uid://cjmbgk030pk6g"]
+
+[ext_resource type="Script" path="res://Main.gd" id="1_bdqb0"]
+[ext_resource type="PackedScene" uid="uid://k2c47svy521p" path="res://Level.tscn" id="2_senhp"]
+[ext_resource type="Script" path="res://ScriptInterpreter.gd" id="3_qfnpw"]
+[ext_resource type="PackedScene" uid="uid://dc4jsm8e5n02i" path="res://CodeEditor.tscn" id="4_h6ycp"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_bdqb0")
+
+[node name="ScriptInterpreter" type="Node" parent="."]
+script = ExtResource("3_qfnpw")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="CodeEditor" parent="CanvasLayer" instance=ExtResource("4_h6ycp")]
+
+[node name="Level" parent="." instance=ExtResource("2_senhp")]
