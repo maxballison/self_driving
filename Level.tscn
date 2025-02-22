@@ -1,16 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://k2c47svy521p"]
+[gd_scene load_steps=2 format=3 uid="uid://blnhlo8rxsgde"]
 
-[ext_resource type="Script" path="res://Level.gd" id="1_u2pgg"]
-[ext_resource type="PackedScene" uid="uid://bm4kef2fvrw2n" path="res://Player.tscn" id="2_xqhfy"]
+[ext_resource type="Script" path="res://scripts/Level.gd" id="1_u2pgg"]
 
 [node name="Level" type="Node3D"]
 script = ExtResource("1_u2pgg")
 
-[node name="Player" parent="." instance=ExtResource("2_xqhfy")]
-
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.305695, 0.952129, 0, -0.952129, 0.305695, 0, 9.132, 4)
 current = true
-
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.0157073, 0.999877, 0, -0.999877, 0.0157073, 0, 8.35365, 0)

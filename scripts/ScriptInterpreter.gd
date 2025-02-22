@@ -9,7 +9,7 @@ var player: Node = null
 func execute_script(script_text: String) -> void:
 	# If the user's code doesn't specify an extends, automatically extend our base script.
 	if not script_text.begins_with("extends"):
-		script_text = "extends \"res://UserScript.gd\"\n" + script_text
+		script_text = "extends \"res://scripts/UserScript.gd\"\n" + script_text
 
 	var script = GDScript.new()
 	script.source_code = script_text

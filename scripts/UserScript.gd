@@ -1,8 +1,6 @@
 # UserScript.gd
 extends Node
 
-
-
 var player  # This will be set by the interpreter.
 
 func move(direction):

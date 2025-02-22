@@ -2,8 +2,7 @@
 extends Node
 
 # Assuming your Level scene’s player is a child of Level.
-@onready var level = $Level
-@onready var player = $Level/Player
+@onready var player = $Player
 @onready var code_editor = $CanvasLayer/CodeEditor
 @onready var interpreter = $ScriptInterpreter
 
