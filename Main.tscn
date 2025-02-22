@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://cjmbgk030pk6g"]
+[gd_scene load_steps=10 format=3 uid="uid://cjmbgk030pk6g"]
 
 [ext_resource type="Script" path="res://scripts/Main.gd" id="1_q1sdt"]
 [ext_resource type="Script" path="res://scripts/ScriptInterpreter.gd" id="3_qfnpw"]
@@ -6,8 +6,59 @@
 [ext_resource type="PackedScene" uid="uid://bm4kef2fvrw2n" path="res://Player.tscn" id="5_e4uym"]
 [ext_resource type="Script" path="res://scripts/LevelManager.gd" id="6_060nv"]
 
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_5c16o"]
+sky_top_color = Color(0.331609, 0.447598, 0.657561, 1)
+sky_horizon_color = Color(0.632902, 0.65415, 0.69764, 1)
+ground_horizon_color = Color(0.632902, 0.65415, 0.69764, 1)
+
+[sub_resource type="Sky" id="Sky_olhcj"]
+sky_material = SubResource("ProceduralSkyMaterial_5c16o")
+
+[sub_resource type="Environment" id="Environment_twve8"]
+background_mode = 2
+sky = SubResource("Sky_olhcj")
+tonemap_mode = 2
+glow_enabled = true
+
+[sub_resource type="GDScript" id="GDScript_0lp6b"]
+script/source = "extends Camera3D
+
+func _ready() -> void:
+	# You may need to ensure that LevelManager has valid data by this time.
+	# One way is to confirm that LevelManager is ordered above the Camera in the scene tree
+	# or that the level is already loaded. Otherwise, you can do call_deferred() or a signal.
+	var level_manager = get_node(\"/root/Main/LevelManager\")
+	if level_manager:
+		var w = level_manager.current_level_width
+		var h = level_manager.current_level_height
+		var size = level_manager.cell_size
+
+		# If your level is NOT already centered in the scene:
+		#   The center of the grid is roughly at ( (w-1)*0.5, 0, (h-1)*0.5 ) * cell_size.
+		var center_x = (float(w) - 1.0) * 0.5 * size
+		var center_z = (float(h) - 1.0) * 0.5 * size
+
+		# Place the camera at some offset above and maybe a bit \"south\" (z + 4)
+		position = Vector3(center_x, 9.0, center_z + 5.0)
+
+		# If you also want the camera to look downward at the level’s center:
+		look_at(Vector3(center_x, 0.0, center_z), Vector3.UP)
+	else:
+		push_error(\"LevelManager not found!\")
+"
+
 [node name="Main" type="Node"]
 script = ExtResource("1_q1sdt")
+
+[node name="LevelManager" type="Node3D" parent="."]
+script = ExtResource("6_060nv")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_twve8")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.866023, -0.433016, 0.250001, 0, 0.499998, 0.866027, -0.500003, 0.749999, -0.43301, 0, 0, 0)
+shadow_enabled = true
 
 [node name="ScriptInterpreter" type="Node" parent="."]
 script = ExtResource("3_qfnpw")
@@ -18,9 +69,7 @@ script = ExtResource("3_qfnpw")
 
 [node name="Player" parent="." instance=ExtResource("5_e4uym")]
 
-[node name="LevelManager" type="Node3D" parent="."]
-script = ExtResource("6_060nv")
-
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.305695, 0.952129, 0, -0.952129, 0.305695, 0, 9.132, 4)
 current = true
+script = SubResource("GDScript_0lp6b")

@@ -25,7 +25,7 @@ func load_level(scene_path: String, spawn_position: Vector2i) -> void:
 	add_child(current_level_instance)
 
 	# Read the level's properties
-	if current_level_instance.has_method("grid_width"):
+	if current_level_instance.get("grid_width"):
 		current_level_width = current_level_instance.grid_width
 		current_level_height = current_level_instance.grid_height
 		cell_size = current_level_instance.cell_size
@@ -35,15 +35,13 @@ func load_level(scene_path: String, spawn_position: Vector2i) -> void:
 		current_level_height = 10
 		cell_size = 1.0
 
-	# Optionally tell the Player where to spawn
+	# Spawn or reposition the Player at the given grid coordinate
 	var player = get_node("/root/Main/Player")  # Adjust if needed
 	if player:
 		player.grid_position = spawn_position
 		player.grid_width = current_level_width
 		player.grid_height = current_level_height
 		player.cell_size = cell_size
-		player.x_offset = (current_level_width - 1) * cell_size * 0.25
-		player.z_offset = (current_level_height - 1) * cell_size * 0.25
 		player.update_world_position()
 
 func switch_level(new_scene_path: String, entrance_door_position: Vector2i):

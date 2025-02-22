@@ -7,21 +7,14 @@ var grid_width: int
 var grid_height: int
 var cell_size: float
 
-# Offsets for positioning the Player in 3D space.
-var x_offset: float
-var z_offset: float
-
 func _ready() -> void:
 	# Optionally, find and store the LevelManager at runtime:
-	var level_manager = get_node("/root/Main/LevelManager")  # Adjust path if needed
+	var level_manager = get_node("/root/Main/LevelManager")  # Adjust the path if needed
 	if level_manager:
 		# Get the grid data from the manager.
 		grid_width = level_manager.current_level_width
 		grid_height = level_manager.current_level_height
 		cell_size = level_manager.cell_size
-
-		x_offset = (grid_width - 1) * cell_size * 0.5
-		z_offset = (grid_height - 1) * cell_size * 0.5
 
 		update_world_position()
 	else:
@@ -52,8 +45,8 @@ func move(direction: String) -> void:
 
 func update_world_position() -> void:
 	position = Vector3(
-		grid_position.x * cell_size - x_offset,
-		1.0,  # keep player above ground
-		grid_position.y * cell_size - z_offset
+		float(grid_position.x) * cell_size,
+		1.0,  # keep player above the ground a bit
+		float(grid_position.y) * cell_size
 	)
 	print("Player moved to grid coord:", grid_position)
