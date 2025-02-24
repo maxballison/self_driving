@@ -16,16 +16,17 @@ custom_minimum_size = Vector2(200, 200)
 layout_mode = 0
 offset_left = 23.0
 offset_top = 124.0
-offset_right = 223.0
-offset_bottom = 324.0
+offset_right = 571.0
+offset_bottom = 695.0
+theme_override_font_sizes/font_size = 27
 text = "func run():
 	move(\"South\")"
 
 [node name="RunButton" type="Button" parent="."]
 custom_minimum_size = Vector2(50, 30)
 layout_mode = 0
-offset_left = 171.0
-offset_top = 95.0
-offset_right = 221.0
-offset_bottom = 126.0
+offset_left = 476.0
+offset_top = 43.0
+offset_right = 566.0
+offset_bottom = 122.0
 text = "Run"

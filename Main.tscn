@@ -24,12 +24,17 @@ glow_enabled = true
 script/source = "extends Camera3D
 
 func _ready() -> void:
-	# You may need to ensure that LevelManager has valid data by this time.
-	# One way is to confirm that LevelManager is ordered above the Camera in the scene tree
-	# or that the level is already loaded. Otherwise, you can do call_deferred() or a signal.
+	pass
+	
+func _on_level_manager_centercamera() -> void:
+	centerCamera()
+	
+
+func centerCamera():
 	var level_manager = get_node(\"/root/Main/LevelManager\")
 	if level_manager:
 		var w = level_manager.current_level_width
+		print(w)
 		var h = level_manager.current_level_height
 		var size = level_manager.cell_size
 
@@ -70,6 +75,8 @@ script = ExtResource("3_qfnpw")
 [node name="Player" parent="." instance=ExtResource("5_e4uym")]
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.305695, 0.952129, 0, -0.952129, 0.305695, 0, 9.132, 4)
+transform = Transform3D(1, 0, 0, 0, 0.305695, 0.952129, 0, -0.952129, 0.305695, 0, 9, 4)
 current = true
 script = SubResource("GDScript_0lp6b")
+
+[connection signal="centercamera" from="LevelManager" to="Camera3D" method="_on_level_manager_centercamera"]

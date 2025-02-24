@@ -1,0 +1,4 @@
+[gd_scene format=3 uid="uid://cxie2a720ppah"]
+
+[node name="Tile" type="Node3D"]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 0)

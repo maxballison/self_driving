@@ -4,10 +4,9 @@ extends EditorScript
 @export var blueprint_file_path: String = "res://blueprints/blueprint1.txt"
 @export var output_scene_path: String = "res://GeneratedLevels/level_1.tscn"
 
-# A dictionary mapping characters in the blueprint to tile scene paths
 var tile_mapping := {
-	' ': "res://tiles/TileEmpty.tscn",  # e.g. floor or empty
-	'#': "res://tiles/TileEmpty.tscn",  # whichever tile you prefer
+	'#': "res://tiles/TileWall.tscn",
+	' ': "res://tiles/TileEmpty.tscn",
 	'x': "res://tiles/TileWall.tscn",
 	'e': "res://tiles/Enemy.tscn",
 	'd': "res://tiles/TileDoor.tscn",
@@ -42,11 +41,11 @@ func generate_level_from_blueprint(source_file: String, target_scene: String) ->
 		if line.length() > max_width:
 			max_width = line.length()
 
-	# Compute half dimensions to center the grid at (0,0,0)
 	var half_width  = float(max_width - 1) * 0.5
 	var half_height = float(max_height - 1) * 0.5
 
-	# Instantiate child tiles for each character
+	var tile_counter = 0
+
 	for y in range(lines.size()):
 		var line = lines[y]
 		for x in range(line.length()):
@@ -54,28 +53,33 @@ func generate_level_from_blueprint(source_file: String, target_scene: String) ->
 			if tile_mapping.has(c):
 				var scene_path = tile_mapping[c]
 				if scene_path != "":
-					var tile_scene = load(scene_path)
+					var tile_scene = load(scene_path)  # a PackedScene
 					if tile_scene:
 						var tile_instance = tile_scene.instantiate()
-						# Shift each tile so that the entire level is centered
+						# Give the node a name that includes the scene’s filename plus a unique number
+						var scene_name = scene_path.get_file().get_basename()  # e.g., "TileEmpty"
+						tile_instance.name = scene_name + "_" + str(tile_counter)
+						tile_counter += 1
+
+						# Position the tile
 						tile_instance.position = Vector3(
-							(float(x) - half_width) * cell_size,
+							float(x) * cell_size,
 							0.0,
-							(float(y) - half_height) * cell_size
+							float(y) * cell_size
 						)
+
 						root_node.add_child(tile_instance)
 						tile_instance.owner = root_node
 
-	# Attach a Level.gd script (not shown here) so the scene has standard properties
+	# Attach the Level.gd script
 	var level_script = preload("res://scripts/Level.gd")
 	root_node.set_script(level_script)
 
-	# Fill out the exported properties for the new scene
+	# Fill out the exported properties for the scene
 	root_node.set("grid_width",  max_width)
 	root_node.set("grid_height", max_height)
 	root_node.set("cell_size",   cell_size)
 
-	# Pack and save the scene
 	var packed_scene = PackedScene.new()
 	packed_scene.pack(root_node)
 	var err = ResourceSaver.save(packed_scene, target_scene)
