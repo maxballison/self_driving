@@ -5,10 +5,10 @@ var current_level_width: int
 var current_level_height: int
 var cell_size: float
 
-signal centercamera()
+signal level_switched()
 
 func _ready() -> void:
-	load_level("res://GeneratedLevels/level_1.tscn", Vector2i(2, 2))  # Example spawn
+	load_level("res://GeneratedLevels/level_1.tscn", Vector2i(1, 1))  # Example spawn
 
 func load_level(scene_path: String, spawn_position: Vector2i) -> void:
 	# Clean up existing level
@@ -58,7 +58,7 @@ func load_level(scene_path: String, spawn_position: Vector2i) -> void:
 		# Connect the Player's door_entered signal if not already connected
 		if not player.is_connected("door_entered", Callable(self, "_on_player_door_entered")):
 				player.connect("door_entered", Callable(self, "_on_player_door_entered"))
-	emit_signal("centercamera")
+	emit_signal("level_switched")
 
 func switch_level(new_scene_path: String, entrance_door_position: Vector2i) -> void:
 	# A helper to switch from the current level to the new one

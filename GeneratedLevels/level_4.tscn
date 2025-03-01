@@ -1,0 +1,310 @@
+[gd_scene load_steps=5 format=3 uid="uid://cagxdn15mwfxq"]
+
+[ext_resource type="Script" path="res://scripts/Level.gd" id="1_4am5u"]
+[ext_resource type="PackedScene" uid="uid://cxie2a720ppah" path="res://tiles/TileWall.tscn" id="2_4p7w5"]
+[ext_resource type="PackedScene" uid="uid://dad2ggmdjwk3x" path="res://tiles/TileDoor.tscn" id="3_opfrj"]
+[ext_resource type="PackedScene" uid="uid://x5qxel6t55b7" path="res://tiles/TileEmpty.tscn" id="5_rqllj"]
+
+[node name="GeneratedLevel" type="Node3D"]
+script = ExtResource("1_4am5u")
+
+[node name="TileWall_0" parent="." instance=ExtResource("2_4p7w5")]
+
+[node name="TileWall_1" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 1, 0, 0)
+
+[node name="TileWall_2" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 2, 0, 0)
+
+[node name="TileWall_3" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3, 0, 0)
+
+[node name="TileWall_4" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 4, 0, 0)
+
+[node name="TileDoor_5" parent="." instance=ExtResource("3_opfrj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 5, 0, 0)
+next_level_path = "res://GeneratedLevels/level_3.tscn"
+next_level_spawn = Vector2i(3, 6)
+
+[node name="TileWall_6" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6, 0, 0)
+
+[node name="TileWall_7" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 7, 0, 0)
+
+[node name="TileWall_8" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 8, 0, 0)
+
+[node name="TileWall_9" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 9, 0, 0)
+
+[node name="TileWall_10" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 1)
+
+[node name="TileEmpty_11" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 1, 0, 1)
+
+[node name="TileEmpty_12" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 2, 0, 1)
+
+[node name="TileEmpty_13" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3, 0, 1)
+
+[node name="TileEmpty_14" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 4, 0, 1)
+
+[node name="TileEmpty_15" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 5, 0, 1)
+
+[node name="TileWall_16" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6, 0, 1)
+
+[node name="TileWall_17" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 7, 0, 1)
+
+[node name="TileWall_18" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 8, 0, 1)
+
+[node name="TileWall_19" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 9, 0, 1)
+
+[node name="TileWall_20" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 2)
+
+[node name="TileEmpty_21" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 1, 0, 2)
+
+[node name="TileWall_22" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 2, 0, 2)
+
+[node name="TileWall_23" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3, 0, 2)
+
+[node name="TileWall_24" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 4, 0, 2)
+
+[node name="TileWall_25" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 5, 0, 2)
+
+[node name="TileWall_26" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6, 0, 2)
+
+[node name="TileWall_27" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 7, 0, 2)
+
+[node name="TileWall_28" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 8, 0, 2)
+
+[node name="TileWall_29" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 9, 0, 2)
+
+[node name="TileWall_30" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 3)
+
+[node name="TileEmpty_31" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 1, 0, 3)
+
+[node name="TileEmpty_32" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 2, 0, 3)
+
+[node name="TileEmpty_33" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3, 0, 3)
+
+[node name="TileEmpty_34" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 4, 0, 3)
+
+[node name="TileEmpty_35" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 5, 0, 3)
+
+[node name="TileEmpty_36" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6, 0, 3)
+
+[node name="TileEmpty_37" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 7, 0, 3)
+
+[node name="TileEmpty_38" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 8, 0, 3)
+
+[node name="TileWall_39" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 9, 0, 3)
+
+[node name="TileWall_40" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 4)
+
+[node name="TileWall_41" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 1, 0, 4)
+
+[node name="TileWall_42" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 2, 0, 4)
+
+[node name="TileWall_43" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3, 0, 4)
+
+[node name="TileWall_44" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 4, 0, 4)
+
+[node name="TileWall_45" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 5, 0, 4)
+
+[node name="TileWall_46" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6, 0, 4)
+
+[node name="TileWall_47" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 7, 0, 4)
+
+[node name="TileEmpty_48" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 8, 0, 4)
+
+[node name="TileWall_49" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 9, 0, 4)
+
+[node name="TileDoor_50" parent="." instance=ExtResource("3_opfrj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 5)
+
+[node name="TileEmpty_51" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 1, 0, 5)
+
+[node name="TileEmpty_52" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 2, 0, 5)
+
+[node name="TileEmpty_53" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3, 0, 5)
+
+[node name="TileEmpty_54" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 4, 0, 5)
+
+[node name="TileEmpty_55" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 5, 0, 5)
+
+[node name="TileEmpty_56" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6, 0, 5)
+
+[node name="TileEmpty_57" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 7, 0, 5)
+
+[node name="TileEmpty_58" parent="." instance=ExtResource("5_rqllj")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 8, 0, 5)
+
+[node name="TileWall_59" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 9, 0, 5)
+
+[node name="TileWall_60" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 6)
+
+[node name="TileWall_61" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 1, 0, 6)
+
+[node name="TileWall_62" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 2, 0, 6)
+
+[node name="TileWall_63" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3, 0, 6)
+
+[node name="TileWall_64" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 4, 0, 6)
+
+[node name="TileWall_65" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 5, 0, 6)
+
+[node name="TileWall_66" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6, 0, 6)
+
+[node name="TileWall_67" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 7, 0, 6)
+
+[node name="TileWall_68" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 8, 0, 6)
+
+[node name="TileWall_69" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 9, 0, 6)
+
+[node name="TileWall_70" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 7)
+
+[node name="TileWall_71" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 1, 0, 7)
+
+[node name="TileWall_72" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 2, 0, 7)
+
+[node name="TileWall_73" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3, 0, 7)
+
+[node name="TileWall_74" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 4, 0, 7)
+
+[node name="TileWall_75" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 5, 0, 7)
+
+[node name="TileWall_76" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6, 0, 7)
+
+[node name="TileWall_77" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 7, 0, 7)
+
+[node name="TileWall_78" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 8, 0, 7)
+
+[node name="TileWall_79" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 9, 0, 7)
+
+[node name="TileWall_80" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 8)
+
+[node name="TileWall_81" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 1, 0, 8)
+
+[node name="TileWall_82" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 2, 0, 8)
+
+[node name="TileWall_83" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3, 0, 8)
+
+[node name="TileWall_84" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 4, 0, 8)
+
+[node name="TileWall_85" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 5, 0, 8)
+
+[node name="TileWall_86" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6, 0, 8)
+
+[node name="TileWall_87" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 7, 0, 8)
+
+[node name="TileWall_88" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 8, 0, 8)
+
+[node name="TileWall_89" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 9, 0, 8)
+
+[node name="TileWall_90" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0, 0, 9)
+
+[node name="TileWall_91" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 1, 0, 9)
+
+[node name="TileWall_92" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 2, 0, 9)
+
+[node name="TileWall_93" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 3, 0, 9)
+
+[node name="TileWall_94" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 4, 0, 9)
+
+[node name="TileWall_95" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 5, 0, 9)
+
+[node name="TileWall_96" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 6, 0, 9)
+
+[node name="TileWall_97" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 7, 0, 9)
+
+[node name="TileWall_98" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 8, 0, 9)
+
+[node name="TileWall_99" parent="." instance=ExtResource("2_4p7w5")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 9, 0, 9)

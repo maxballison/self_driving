@@ -2,9 +2,9 @@
 
 [ext_resource type="Script" path="res://scripts/Main.gd" id="1_q1sdt"]
 [ext_resource type="Script" path="res://scripts/ScriptInterpreter.gd" id="3_qfnpw"]
-[ext_resource type="PackedScene" uid="uid://dc4jsm8e5n02i" path="res://CodeEditor.tscn" id="4_h6ycp"]
 [ext_resource type="PackedScene" uid="uid://bm4kef2fvrw2n" path="res://Player.tscn" id="5_e4uym"]
 [ext_resource type="Script" path="res://scripts/LevelManager.gd" id="6_060nv"]
+[ext_resource type="PackedScene" uid="uid://lgdcjq8scpdh" path="res://CodeEditorImproved.tscn" id="6_ndsxb"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_5c16o"]
 sky_top_color = Color(0.331609, 0.447598, 0.657561, 1)
@@ -26,9 +26,9 @@ script/source = "extends Camera3D
 func _ready() -> void:
 	pass
 	
-func _on_level_manager_centercamera() -> void:
-	centerCamera()
 	
+func _on_level_manager_level_switched() -> void:
+	centerCamera()
 
 func centerCamera():
 	var level_manager = get_node(\"/root/Main/LevelManager\")
@@ -54,6 +54,7 @@ func centerCamera():
 
 [node name="Main" type="Node"]
 script = ExtResource("1_q1sdt")
+run_delay = 0.2
 
 [node name="LevelManager" type="Node3D" parent="."]
 script = ExtResource("6_060nv")
@@ -68,10 +69,6 @@ shadow_enabled = true
 [node name="ScriptInterpreter" type="Node" parent="."]
 script = ExtResource("3_qfnpw")
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
-
-[node name="CodeEditor" parent="CanvasLayer" instance=ExtResource("4_h6ycp")]
-
 [node name="Player" parent="." instance=ExtResource("5_e4uym")]
 
 [node name="Camera3D" type="Camera3D" parent="."]
@@ -79,4 +76,7 @@ transform = Transform3D(1, 0, 0, 0, 0.305695, 0.952129, 0, -0.952129, 0.305695, 
 current = true
 script = SubResource("GDScript_0lp6b")
 
-[connection signal="centercamera" from="LevelManager" to="Camera3D" method="_on_level_manager_centercamera"]
+[node name="CodeEditorImproved" parent="." instance=ExtResource("6_ndsxb")]
+
+[connection signal="level_switched" from="LevelManager" to="Camera3D" method="_on_level_manager_level_switched"]
+[connection signal="door_entered" from="Player" to="ScriptInterpreter" method="_on_player_door_entered"]
