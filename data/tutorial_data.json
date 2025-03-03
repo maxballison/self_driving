@@ -1,26 +1,26 @@
 {
   "res://GeneratedLevels/level_1.tscn": [
-	"[b]Welcome to the Coding Adventure![/b]\n\nIn this game, you'll learn to write code to control your character through various levels.",
-	"Use the [color=#80CCFF]Code Editor[/color] to write instructions for your character.\n\nFor example, try typing:\n[code]move(\"East\")[/code]\nand then click [color=#80CCFF]Run[/color] to move your character.",
-	"The basic commands you can use are:\n[code]move(\"North\")[/code]\n[code]move(\"South\")[/code]\n[code]move(\"East\")[/code]\n[code]move(\"West\")[/code]",
+	"[b]Welcome to the Self-Driving Car Coding Adventure![/b]\n\nIn this game, you'll learn to write code to control your car through various levels.",
+	"Use the [color=#80CCFF]Code Editor[/color] to write instructions for your car.\n\nFor example, try typing:\n[code]drive()[/code]\nand then click [color=#80CCFF]Run[/color] to move your car forward in the direction it's facing.",
+	"The basic commands you can use are:\n[code]drive()[/code] - Move forward in the direction you're facing\n[code]turn_left()[/code] - Rotate 90° counter-clockwise\n[code]turn_right()[/code] - Rotate 90° clockwise",
 	"Try to reach the [color=#FFCC80]door[/color] to advance to the next level.\n\nGood luck on your coding journey!"
   ],
   "res://GeneratedLevels/level_2.tscn": [
-	"[b]Level 2: Variables[/b]\n\nNow let's learn about variables. Variables let you store and reuse values.",
-	"Try creating a variable to store a direction:\n[code]var direction = \"East\"\nmove(direction)[/code]",
-	"You can change the value of a variable:\n[code]var direction = \"East\"\nmove(direction)\ndirection = \"South\"\nmove(direction)[/code]",
+	"[b]Level 2: Variables & Direction[/b]\n\nNow let's learn about variables. Variables let you store and reuse values.",
+	"Try creating a variable to store how many steps to move:\n[code]var steps = 3\nfor i in range(steps):\n    drive()[/code]",
+	"You can also create loops with turning:\n[code]for i in range(4):\n    drive()\n    turn_right()[/code]",
 	"Use variables to make your code cleaner and more flexible!"
   ],
   "res://GeneratedLevels/level_3.tscn": [
-	"[b]Level 3: Loops[/b]\n\nLoops let you repeat code multiple times without writing it again and again.",
-	"Try using a [color=#80CCFF]for loop[/color] to move multiple times:\n[code]for i in range(3):\n    move(\"East\")[/code]",
-	"You can also use a [color=#80CCFF]while loop[/color]:\n[code]var steps = 0\nwhile steps < 3:\n    move(\"East\")\n    steps = steps + 1[/code]",
-	"Loops are powerful tools to make your code more efficient!"
+	"[b]Level 3: Loops & Navigation[/b]\n\nLoops let you repeat code multiple times without writing it again and again.",
+	"Try making the car drive in a square pattern:\n[code]for i in range(4):\n    drive()\n    turn_right()[/code]",
+	"You can also use a [color=#80CCFF]while loop[/color]:\n[code]var steps = 0\nwhile steps < 3:\n    drive()\n    steps = steps + 1[/code]",
+	"Try to navigate to the exit with as few lines of code as possible!"
   ],
   "res://GeneratedLevels/level_4.tscn": [
 	"[b]Level 4: Functions[/b]\n\nFunctions let you group code that belongs together.",
-	"Define a function like this:\n[code]func move_twice(direction):\n    move(direction)\n    move(direction)[/code]",
-	"Then call it like this:\n[code]move_twice(\"East\")[/code]",
-	"Functions help you organize your code and reuse logic across your program."
+	"Define a function like this:\n[code]func drive_square():\n    for i in range(4):\n        drive()\n        turn_right()[/code]",
+	"Then call it like this:\n[code]drive_square()[/code]",
+	"Try creating functions for different driving patterns to navigate this complex maze!"
   ]
 }

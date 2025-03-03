@@ -1,5 +1,6 @@
 extends Node3D
 
+# Grid positions and level data
 var grid_position: Vector2i = Vector2i(0, 0)
 var grid_width: int
 var grid_height: int
@@ -8,11 +9,18 @@ var tile_data: Array = []  # 2D array of blueprint chars
 var door_map: Dictionary = {}  # (x,y) -> door node
 signal door_entered(next_level_path: String, next_level_spawn: Vector2i)
 
+# Direction enum (clockwise order)
+enum Direction { NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3 }
+var current_direction: int = Direction.EAST  # Default: car starts facing north
+
 # Variables for smooth movement animation
 var is_moving: bool = false
+var is_turning: bool = false
 var move_start: Vector3         # starting position before move
 var move_target: Vector3        # target position after move
-var move_time: float = 0.0      # elapsed time since move started
+var rotation_start: float       # starting rotation before turn
+var rotation_target: float      # target rotation after turn
+var animation_time: float = 0.0 # elapsed time since animation started
 var should_teleport: bool = true  # Flag for instant teleportation
 
 func _ready() -> void:
@@ -21,24 +29,24 @@ func _ready() -> void:
 	if level_manager == null:
 		push_error("No LevelManager found at /root/Main/LevelManager")
 	update_world_position()
+	update_model_rotation()
 
-func move(direction: String) -> void:
-	if is_moving:
+# Function to drive forward in the direction the car is facing
+func drive() -> void:
+	if is_moving or is_turning:
 		# Prevent starting a new move until the current one finishes.
 		return
 		
 	var new_pos = grid_position
-	match direction:
-		"North":
+	match current_direction:
+		Direction.NORTH:
 			new_pos.y -= 1
-		"South":
+		Direction.SOUTH:
 			new_pos.y += 1
-		"East":
+		Direction.EAST:
 			new_pos.x += 1
-		"West":
+		Direction.WEST:
 			new_pos.x -= 1
-		_:
-			return
 			
 	# Check boundaries
 	if new_pos.x < 0 or new_pos.x >= grid_width or new_pos.y < 0 or new_pos.y >= grid_height:
@@ -73,33 +81,86 @@ func move(direction: String) -> void:
 	# Start the movement towards the new grid position
 	update_world_position()
 
+# Function to turn the car left (counter-clockwise)
+func turn_left() -> void:
+	if is_moving or is_turning:
+		return
+		
+	# Update direction (subtract 1 with wrap-around)
+	current_direction = (current_direction - 1 + 4) % 4
+	start_turn_animation()
+	print("Turned left: now facing " + Direction.keys()[current_direction])
+
+# Function to turn the car right (clockwise)
+func turn_right() -> void:
+	if is_moving or is_turning:
+		return
+		
+	# Update direction (add 1 with wrap-around)
+	current_direction = (current_direction + 1) % 4
+	start_turn_animation()
+	print("Turned right: now facing " + Direction.keys()[current_direction])
+
+# Helper function to start the turn animation
+func start_turn_animation() -> void:
+	rotation_start = rotation.y
+	rotation_target = direction_to_rotation(current_direction)
+	
+	# Ensure we take the shortest path when rotating
+	if abs(rotation_target - rotation_start) > PI:
+		if rotation_target > rotation_start:
+			rotation_start += 2 * PI
+		else:
+			rotation_target += 2 * PI
+			
+	animation_time = 0.0
+	is_turning = true
+
+# Convert direction enum to Y-axis rotation in radians
+func direction_to_rotation(dir: int) -> float:
+	match dir:
+		Direction.NORTH:
+			return 0.0        # 0 degrees - facing negative Z
+		Direction.EAST:
+			return -PI * 0.5  # -90 degrees - facing positive X
+		Direction.SOUTH:
+			return -PI        # -180 degrees - facing positive Z
+		Direction.WEST:
+			return -PI * 1.5  # -270 degrees - facing negative X
+	return 0.0
+
+# Update the model's rotation based on current direction
+func update_model_rotation() -> void:
+	rotation.y = direction_to_rotation(current_direction)
+
 func update_world_position() -> void:
 	if should_teleport:
 		# Instantly teleport when transitioning levels
 		position = Vector3(
 			float(grid_position.x) * cell_size,
-			1.0,  # Keep Y at 1.0 as the "ground" level
+			0.2,  # Lowered Y position for car
 			float(grid_position.y) * cell_size
 		)
 		is_moving = false
 		should_teleport = false  # Reset the flag
-		print("Player teleported to grid coord:", grid_position)
+		update_model_rotation()  # Make sure car is facing the right direction
+		print("Car teleported to grid coord:", grid_position)
 	else:
 		# Normal gliding animation for regular moves
 		move_start = position
 		move_target = Vector3(
 			float(grid_position.x) * cell_size,
-			1.0,  # Keep Y at 1.0 as the "ground" level
+			0.2,  # Lowered Y position for car
 			float(grid_position.y) * cell_size
 		)
-		move_time = 0.0
+		animation_time = 0.0
 		is_moving = true
-		print("Player moving to grid coord:", grid_position)
+		print("Car moving to grid coord:", grid_position)
 
 func _process(delta: float) -> void:
 	if is_moving:
-		move_time += delta
-		var t = move_time / owner.run_delay
+		animation_time += delta
+		var t = animation_time / owner.run_delay
 		
 		# Clamp t to 1.0 so we don't overshoot.
 		if t >= 1.0:
@@ -108,3 +169,15 @@ func _process(delta: float) -> void:
 			
 		# Linear interpolation between start and target positions
 		position = move_start.lerp(move_target, t)
+	
+	if is_turning:
+		animation_time += delta
+		var t = animation_time / (owner.run_delay * 0.5)  # Half the time of movement
+		
+		if t >= 1.0:
+			t = 1.0
+			is_turning = false
+			rotation.y = rotation_target  # Ensure perfect alignment
+		else:
+			# Use a smooth rotation using lerp_angle
+			rotation.y = lerp_angle(rotation_start, rotation_target, t)

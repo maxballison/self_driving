@@ -215,9 +215,8 @@ func _on_level_switched() -> void:
 
 func load_tutorial_for_level(level_path: String) -> void:
 	# Get the tutorial messages from the TutorialManager
-	var tutorial_manager = get_node_or_null("/root/TutorialManager")
-	if tutorial_manager:
-		var messages = tutorial_manager.get_messages_for_level(level_path)
+	if TutorialManagers:  # Direct access to singleton
+		var messages = TutorialManagers.get_messages_for_level(level_path)
 		set_tutorial_messages(messages)
 		visible = true
 		print("Loaded tutorial for level: ", level_path)

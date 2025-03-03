@@ -152,10 +152,22 @@ func _interpret_line(line: String, indent_level: int) -> String:
 	elif line.begins_with("var "):
 		var result_ok = _interpret_var_declaration(line)
 		return "NONE" if result_ok else "ERROR"
-	elif line.begins_with("move("):
-		var ok = _interpret_move_statement(line)
+	elif line.begins_with("drive("):
+		var ok = _interpret_drive_statement(line)
 		if ok:
 			return "MOVE"
+		else:
+			return "ERROR"
+	elif line.begins_with("turn_left("):
+		var ok = _interpret_turn_left_statement(line)
+		if ok:
+			return "MOVE"  # Yield for turn animation
+		else:
+			return "ERROR"
+	elif line.begins_with("turn_right("):
+		var ok = _interpret_turn_right_statement(line)
+		if ok:
+			return "MOVE"  # Yield for turn animation
 		else:
 			return "ERROR"
 	elif "=" in line and not line.begins_with("if ") and not line.begins_with("while "):
@@ -330,13 +342,52 @@ func _interpret_assignment(line: String) -> bool:
 	set_var(var_name, parsed_value)
 	return true
 
-func _interpret_move_statement(line: String) -> bool:
-	# e.g., move("East") or move(dir)
-	var inside = _extract_between(line, "move(", ")")
+func _interpret_drive_statement(line: String) -> bool:
+	# drive() takes no parameters
+	var inside = _extract_between(line, "drive(", ")")
 	inside = inside.strip_edges()
-	var direction_value = _parse_value(inside)
+	
+	# Verify no arguments were passed
+	if inside.length() > 0:
+		push_error("drive() doesn't take any parameters.")
+		return false
+		
 	if player:
-		player.move(direction_value)
+		player.drive()
+	else:
+		push_error("No player assigned to interpreter.")
+		return false
+	return true
+
+func _interpret_turn_left_statement(line: String) -> bool:
+	# turn_left() takes no parameters
+	var inside = _extract_between(line, "turn_left(", ")")
+	inside = inside.strip_edges()
+	
+	# Verify no arguments were passed
+	if inside.length() > 0:
+		push_error("turn_left() doesn't take any parameters.")
+		return false
+		
+	if player:
+		player.turn_left()
+	else:
+		push_error("No player assigned to interpreter.")
+		return false
+	return true
+
+func _interpret_turn_right_statement(line: String) -> bool:
+	# turn_right() takes no parameters
+	var inside = _extract_between(line, "turn_right(", ")")
+	inside = inside.strip_edges()
+	
+	# Verify no arguments were passed
+	if inside.length() > 0:
+		push_error("turn_right() doesn't take any parameters.")
+		return false
+		
+	if player:
+		player.turn_right()
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
