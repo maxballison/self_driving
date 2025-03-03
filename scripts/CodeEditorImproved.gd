@@ -5,9 +5,9 @@ class_name ImprovedCodeEditor
 @onready var title_bar = $TitleBar
 @onready var title_label = $TitleBar/TitleLabel
 @onready var close_button = $TitleBar/CloseButton
-@onready var text_edit = $EditorContainer/TextEdit
+@onready var text_edit = $EditorContainer/EditorBox/TextEdit
 @onready var run_button = $ButtonPanel/RunButton
-@onready var line_counter = $EditorContainer/LineCounter
+@onready var line_counter = $EditorContainer/EditorBox/LineCounter
 @onready var resize_handle = $ResizeHandle
 
 # Line restriction settings
@@ -95,9 +95,9 @@ func _configure_text_edit() -> void:
 	title_label.add_theme_font_size_override("font_size", font_size)
 	
 	# Configure line counter for better alignment
-	line_counter.add_theme_font_override("mono_font", font)
-	line_counter.add_theme_font_size_override("mono_font_size", font_size)
-	line_counter.add_theme_color_override("font_selected_color", Color(0.6, 0.6, 0.6))
+	line_counter.add_theme_font_override("normal_font", font)
+	line_counter.add_theme_font_size_override("normal_font_size", font_size)
+	line_counter.add_theme_color_override("default_color", Color(0.6, 0.6, 0.6))
 	line_counter.add_theme_constant_override("line_separation", 4)
 	line_counter.size_flags_vertical = SIZE_EXPAND_FILL
 	

@@ -1,0 +1,26 @@
+{
+  "res://GeneratedLevels/level_1.tscn": [
+	"[b]Welcome to the Coding Adventure![/b]\n\nIn this game, you'll learn to write code to control your character through various levels.",
+	"Use the [color=#80CCFF]Code Editor[/color] to write instructions for your character.\n\nFor example, try typing:\n[code]move(\"East\")[/code]\nand then click [color=#80CCFF]Run[/color] to move your character.",
+	"The basic commands you can use are:\n[code]move(\"North\")[/code]\n[code]move(\"South\")[/code]\n[code]move(\"East\")[/code]\n[code]move(\"West\")[/code]",
+	"Try to reach the [color=#FFCC80]door[/color] to advance to the next level.\n\nGood luck on your coding journey!"
+  ],
+  "res://GeneratedLevels/level_2.tscn": [
+	"[b]Level 2: Variables[/b]\n\nNow let's learn about variables. Variables let you store and reuse values.",
+	"Try creating a variable to store a direction:\n[code]var direction = \"East\"\nmove(direction)[/code]",
+	"You can change the value of a variable:\n[code]var direction = \"East\"\nmove(direction)\ndirection = \"South\"\nmove(direction)[/code]",
+	"Use variables to make your code cleaner and more flexible!"
+  ],
+  "res://GeneratedLevels/level_3.tscn": [
+	"[b]Level 3: Loops[/b]\n\nLoops let you repeat code multiple times without writing it again and again.",
+	"Try using a [color=#80CCFF]for loop[/color] to move multiple times:\n[code]for i in range(3):\n    move(\"East\")[/code]",
+	"You can also use a [color=#80CCFF]while loop[/color]:\n[code]var steps = 0\nwhile steps < 3:\n    move(\"East\")\n    steps = steps + 1[/code]",
+	"Loops are powerful tools to make your code more efficient!"
+  ],
+  "res://GeneratedLevels/level_4.tscn": [
+	"[b]Level 4: Functions[/b]\n\nFunctions let you group code that belongs together.",
+	"Define a function like this:\n[code]func move_twice(direction):\n    move(direction)\n    move(direction)[/code]",
+	"Then call it like this:\n[code]move_twice(\"East\")[/code]",
+	"Functions help you organize your code and reuse logic across your program."
+  ]
+}

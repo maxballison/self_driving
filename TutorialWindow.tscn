@@ -1,17 +1,13 @@
-[gd_scene load_steps=2 format=3 uid="uid://lgdcjq8scpdh"]
+[gd_scene load_steps=2 format=3 uid="uid://d1ctm821wa3np"]
 
-[ext_resource type="Script" path="res://scripts/CodeEditorImproved.gd" id="1_l85x1"]
+[ext_resource type="Script" path="res://scripts/TutorialWindow.gd" id="1_tutorial"]
 
-[node name="CodeEditorImproved" type="Control"]
+[node name="TutorialWindow" type="Control"]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_right = -1688.0
-offset_bottom = -680.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_l85x1")
+anchors_preset = 0
+offset_right = 400.0
+offset_bottom = 300.0
+script = ExtResource("1_tutorial")
 
 [node name="PanelBackground" type="Panel" parent="."]
 layout_mode = 1
@@ -36,10 +32,10 @@ anchor_top = 0.5
 anchor_bottom = 0.5
 offset_left = 10.0
 offset_top = -11.5
-offset_right = 210.0
+offset_right = 200.0
 offset_bottom = 11.5
 grow_vertical = 2
-text = "Code Editor"
+text = "Tutorial"
 vertical_alignment = 1
 
 [node name="CloseButton" type="Button" parent="TitleBar"]
@@ -57,7 +53,7 @@ grow_horizontal = 0
 grow_vertical = 2
 text = "×"
 
-[node name="EditorContainer" type="Panel" parent="."]
+[node name="MessageContainer" type="Panel" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -67,41 +63,20 @@ offset_bottom = -40.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="EditorBox" type="HBoxContainer" parent="EditorContainer"]
+[node name="RichTextLabel" type="RichTextLabel" parent="MessageContainer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 2.0
-offset_top = 2.0
-offset_right = -2.0
-offset_bottom = -2.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
 grow_horizontal = 2
 grow_vertical = 2
-
-[node name="LineCounter" type="RichTextLabel" parent="EditorContainer/EditorBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.1
-focus_mode = 2
 bbcode_enabled = true
-text = "1
-2
-3
-"
-fit_content = true
-scroll_active = false
-selection_enabled = true
-
-[node name="TextEdit" type="TextEdit" parent="EditorContainer/EditorBox"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.9
-text = "# Write your code here!"
-scroll_smooth = true
-highlight_current_line = true
-draw_tabs = true
-caret_blink = true
+text = "Welcome to the tutorial! The text will appear here with a typing effect."
+scroll_following = true
 
 [node name="ButtonPanel" type="Panel" parent="."]
 layout_mode = 1
@@ -113,20 +88,20 @@ offset_top = -40.0
 grow_horizontal = 2
 grow_vertical = 0
 
-[node name="RunButton" type="Button" parent="ButtonPanel"]
+[node name="NextButton" type="Button" parent="ButtonPanel"]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
+anchors_preset = 6
+anchor_left = 1.0
 anchor_top = 0.5
-anchor_right = 0.5
+anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = -30.0
+offset_left = -80.0
 offset_top = -15.0
-offset_right = 30.0
+offset_right = -10.0
 offset_bottom = 15.0
-grow_horizontal = 2
+grow_horizontal = 0
 grow_vertical = 2
-text = "Run"
+text = "Next"
 
 [node name="ResizeHandle" type="Control" parent="."]
 layout_mode = 1
@@ -144,6 +119,5 @@ mouse_default_cursor_shape = 12
 
 [connection signal="gui_input" from="TitleBar" to="." method="_on_title_bar_gui_input"]
 [connection signal="pressed" from="TitleBar/CloseButton" to="." method="_on_close_button_pressed"]
-[connection signal="text_changed" from="EditorContainer/EditorBox/TextEdit" to="." method="_on_text_changed"]
-[connection signal="pressed" from="ButtonPanel/RunButton" to="." method="_on_run_button_pressed"]
+[connection signal="pressed" from="ButtonPanel/NextButton" to="." method="_on_next_button_pressed"]
 [connection signal="gui_input" from="ResizeHandle" to="." method="_on_resize_handle_gui_input"]

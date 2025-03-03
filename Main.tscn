@@ -1,10 +1,11 @@
-[gd_scene load_steps=10 format=3 uid="uid://cjmbgk030pk6g"]
+[gd_scene load_steps=11 format=3 uid="uid://cjmbgk030pk6g"]
 
 [ext_resource type="Script" path="res://scripts/Main.gd" id="1_q1sdt"]
 [ext_resource type="Script" path="res://scripts/ScriptInterpreter.gd" id="3_qfnpw"]
 [ext_resource type="PackedScene" uid="uid://bm4kef2fvrw2n" path="res://Player.tscn" id="5_e4uym"]
 [ext_resource type="Script" path="res://scripts/LevelManager.gd" id="6_060nv"]
 [ext_resource type="PackedScene" uid="uid://lgdcjq8scpdh" path="res://CodeEditorImproved.tscn" id="6_ndsxb"]
+[ext_resource type="PackedScene" uid="uid://d1ctm821wa3np" path="res://TutorialWindow.tscn" id="6_vhwd6"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_5c16o"]
 sky_top_color = Color(0.331609, 0.447598, 0.657561, 1)
@@ -77,6 +78,12 @@ current = true
 script = SubResource("GDScript_0lp6b")
 
 [node name="CodeEditorImproved" parent="." instance=ExtResource("6_ndsxb")]
+
+[node name="TutorialWindow" parent="." instance=ExtResource("6_vhwd6")]
+offset_left = 2069.0
+offset_top = 28.0
+offset_right = 2469.0
+offset_bottom = 697.0
 
 [connection signal="level_switched" from="LevelManager" to="Camera3D" method="_on_level_manager_level_switched"]
 [connection signal="door_entered" from="Player" to="ScriptInterpreter" method="_on_player_door_entered"]
