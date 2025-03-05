@@ -7,7 +7,7 @@ extends Node
 @onready var interpreter = $ScriptInterpreter
 @onready var level_manager = $LevelManager
 
-@export var run_delay = 0.5
+@export var run_delay = 0.1
 
 func _ready():
 	# Setup interpreter
@@ -32,7 +32,7 @@ func _on_level_switched():
 		tutorial_window.visible = true
 		
 		# If TutorialManager not available, set default messages
-		if not has_node("/root/TutorialManager"):
+		if not TutorialManagers:
 			var current_level = level_manager.current_level_instance.scene_file_path if level_manager.current_level_instance else "unknown"
 			var default_messages = [
 				"[b]Welcome to Level " + current_level.get_basename().get_file() + "![/b]",

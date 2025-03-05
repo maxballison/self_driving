@@ -55,7 +55,6 @@ func centerCamera():
 
 [node name="Main" type="Node"]
 script = ExtResource("1_q1sdt")
-run_delay = 0.2
 
 [node name="LevelManager" type="Node3D" parent="."]
 script = ExtResource("6_060nv")
@@ -65,6 +64,7 @@ environment = SubResource("Environment_twve8")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(-0.866025, -0.5, -2.18557e-08, 0, -4.37114e-08, 1, -0.5, 0.866025, 3.78552e-08, 0, 0, 0)
+light_energy = 0.3
 shadow_enabled = true
 
 [node name="ScriptInterpreter" type="Node" parent="."]
