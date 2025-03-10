@@ -4,6 +4,11 @@ extends Node3D
 @export var grid_height: int = 10
 @export var cell_size: float = 1.0
 
+# Add exported variables for the next level
+@export var next_level_path: String = ""
+@export var next_level_spawn: Vector2i = Vector2i(1, 1)
+@export var transition_delay: float = 2.0  # Seconds to wait before transitioning
+
 # This will store the "blueprint" characters for each cell.
 @export var tile_data: Array = []
 

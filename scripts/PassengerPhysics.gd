@@ -239,3 +239,40 @@ func update_indicator_position():
 	if passenger_index >= 0:
 		# Position above car with spacing based on index
 		destination_indicator.global_position = car_ref.global_position + Vector3(0, 1.0 + (passenger_index * 0.3), 0)
+		
+		
+func reset_state() -> void:
+	# Reset passenger to initial state
+	if is_picked_up or is_delivered or is_ragdolling:
+		print("Resetting passenger state: ", name)
+		is_picked_up = false
+		is_delivered = false
+		is_ragdolling = false
+		car_ref = null
+		
+		# Show the normal visual model
+		if visual_model:
+			visual_model.visible = true
+		
+		# Reset the ragdoll if it exists
+		if ragdoll_body:
+			ragdoll_body.visible = false
+			ragdoll_body.freeze = true
+		
+		# Handle the destination indicator
+		if destination_indicator:
+			# If indicator was reparented to scene root, remove it
+			if destination_indicator.get_parent() != self:
+				destination_indicator.queue_free()
+				
+				# Create a new indicator
+				var indicator_scene = destination_indicator.duplicate()
+				add_child(indicator_scene)
+				destination_indicator = indicator_scene
+			
+			# Make sure the indicator is visible and positioned correctly
+			destination_indicator.visible = true
+			destination_indicator.position = Vector3(0, 1.3, 0)
+			
+			# Set color again just to be safe
+			set_destination_color()

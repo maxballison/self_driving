@@ -59,8 +59,17 @@ func _ready() -> void:
 	update_world_position()
 	update_model_rotation()
 	clear_passengers()
+	
+	refresh_nearby_passengers()
 
 func clear_passengers() -> void:
+	# Clean up any indicators for current passengers
+	for passenger in current_passengers:
+		if passenger and is_instance_valid(passenger):
+			# If passenger has an indicator that was reparented, remove it
+			if passenger.destination_indicator and passenger.destination_indicator.get_parent() != passenger:
+				passenger.destination_indicator.queue_free()
+	
 	current_passengers.clear()
 	nearby_passengers.clear()
 
@@ -243,6 +252,7 @@ func refresh_nearby_passengers() -> void:
 				nearby_passengers.append(passenger)
 
 # Check if all passengers have been delivered
+# Check if all passengers have been delivered
 func check_level_completion() -> void:
 	# Get the level from the main scene
 	var level_manager = get_node("/root/Main/LevelManager")
@@ -270,21 +280,35 @@ func check_level_completion() -> void:
 		print("All passengers delivered! Level completed.")
 		emit_signal("level_completed")
 		
-		# Find next level
-		var next_level = ""
-		var next_spawn = Vector2i(1, 1)
+		# Get next level information from the level itself
+		var next_level = current_level.next_level_path
+		var next_spawn = current_level.next_level_spawn
 		
-		# Find a door to use for next level info
-		for door_pos in door_map:
-			var door = door_map[door_pos]
-			if door.has_method("get"):
-				next_level = door.get("next_level_path")
-				next_spawn = door.get("next_level_spawn")
-				break
+		# If next_level_path is empty, try to find it from a door
+		if next_level == "":
+			# Find a door to use for next level info as a fallback
+			for door_pos in door_map:
+				var door = door_map[door_pos]
+				if door.has_method("get"):
+					next_level = door.get("next_level_path")
+					next_spawn = door.get("next_level_spawn")
+					break
 		
-		# Go to next level if found
+		# Go to next level after a delay if we have a path
 		if next_level != "":
-			emit_signal("door_entered", next_level, next_spawn)
+			print("Transitioning to next level after delay: ", next_level)
+			
+			# Create a transition effect (e.g., fade or message)
+			# For simplicity, we'll just use a timer
+			var transition_delay = current_level.transition_delay
+			if transition_delay <= 0:
+				transition_delay = 2.0 # Default delay
+				
+			var timer = get_tree().create_timer(transition_delay)
+			timer.timeout.connect(func():
+				emit_signal("door_entered", next_level, next_spawn)
+			)
+
 
 # Helper function to start the turn animation
 func start_turn_animation() -> void:

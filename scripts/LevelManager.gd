@@ -15,6 +15,12 @@ func load_level(scene_path: String, spawn_position: Vector2i) -> void:
 	
 	# Clean up existing level
 	if current_level_instance:
+		# Find and clean up any orphaned indicators in the scene root
+		for child in get_tree().root.get_children():
+			if child is MeshInstance3D and "destination_indicator" in child.name.to_lower():
+				child.queue_free()
+				print("Cleaned up orphaned indicator")
+		
 		current_level_instance.queue_free()
 		current_level_instance = null
 
@@ -55,6 +61,12 @@ func load_level(scene_path: String, spawn_position: Vector2i) -> void:
 		passenger_map = current_level_instance.passenger_map
 	if current_level_instance.get("destination_map"):
 		destination_map = current_level_instance.destination_map
+		
+	# Reset passenger states
+	for pos in passenger_map:
+		var passenger = passenger_map[pos]
+		if passenger.has_method("reset_state"):
+			passenger.reset_state()
 
 	# Now set up the Player
 	var player = get_node("/root/Main/Player")
@@ -76,6 +88,9 @@ func load_level(scene_path: String, spawn_position: Vector2i) -> void:
 		
 		# Connect signals if not already connected
 		_connect_player_signals(player)
+		
+		# Call refresh_nearby_passengers after everything is set up
+		player.refresh_nearby_passengers()
 	
 	# For debugging, print the maps
 	print("Level loaded with:")
@@ -108,6 +123,7 @@ func _on_passenger_hit(passenger) -> void:
 	# The actual reset is handled by schedule_level_reset
 
 # This is the primary way to reset the level, called from multiple places
+# This is the primary way to reset the level, called from multiple places
 func schedule_level_reset(passenger = null) -> void:
 	print("Level reset scheduled after passenger hit!")
 	
@@ -118,6 +134,12 @@ func schedule_level_reset(passenger = null) -> void:
 	
 	# Mark that a reset is scheduled
 	set_meta("reset_scheduled", true)
+	
+	# Clean up any orphaned indicators immediately
+	for child in get_tree().root.get_children():
+		if child is MeshInstance3D and (child.name.begins_with("DestinationIndicator") or "destination_indicator" in child.name.to_lower()):
+			child.queue_free()
+			print("Cleaned up orphaned indicator during reset")
 	
 	# Reset the level after a delay to show the ragdoll effect
 	var timer = get_tree().create_timer(2.0)
