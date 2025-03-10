@@ -1,25 +1,13 @@
-[gd_scene load_steps=11 format=3 uid="uid://cjmbgk030pk6g"]
+[gd_scene load_steps=10 format=3 uid="uid://cjmbgk030pk6g"]
 
 [ext_resource type="Script" path="res://scripts/Main.gd" id="1_q1sdt"]
+[ext_resource type="PackedScene" uid="uid://b3oijswa6a50w" path="res://world_environment.tscn" id="3_gg6vl"]
 [ext_resource type="Script" path="res://scripts/ScriptInterpreter.gd" id="3_qfnpw"]
 [ext_resource type="PackedScene" uid="uid://bm4kef2fvrw2n" path="res://Player.tscn" id="5_e4uym"]
 [ext_resource type="Script" path="res://scripts/LevelManager.gd" id="6_060nv"]
 [ext_resource type="PackedScene" uid="uid://lgdcjq8scpdh" path="res://CodeEditorImproved.tscn" id="6_ndsxb"]
 [ext_resource type="PackedScene" uid="uid://d1ctm821wa3np" path="res://TutorialWindow.tscn" id="6_vhwd6"]
-
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_5c16o"]
-sky_top_color = Color(0.331609, 0.447598, 0.657561, 1)
-sky_horizon_color = Color(0.632902, 0.65415, 0.69764, 1)
-ground_horizon_color = Color(0.632902, 0.65415, 0.69764, 1)
-
-[sub_resource type="Sky" id="Sky_olhcj"]
-sky_material = SubResource("ProceduralSkyMaterial_5c16o")
-
-[sub_resource type="Environment" id="Environment_twve8"]
-background_mode = 2
-sky = SubResource("Sky_olhcj")
-tonemap_mode = 2
-glow_enabled = true
+[ext_resource type="PackedScene" uid="uid://bsbj77waho1rq" path="res://MovingBackground.tscn" id="8_t66kt"]
 
 [sub_resource type="GDScript" id="GDScript_0lp6b"]
 script/source = "extends Camera3D
@@ -55,16 +43,16 @@ func centerCamera():
 
 [node name="Main" type="Node"]
 script = ExtResource("1_q1sdt")
+run_delay = 0.3
 
 [node name="LevelManager" type="Node3D" parent="."]
 script = ExtResource("6_060nv")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_twve8")
+[node name="WorldEnvironment" parent="." instance=ExtResource("3_gg6vl")]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(-0.866025, -0.5, -2.18557e-08, 0, -4.37114e-08, 1, -0.5, 0.866025, 3.78552e-08, 0, 0, 0)
-light_energy = 0.3
+light_energy = 0.6
 shadow_enabled = true
 
 [node name="ScriptInterpreter" type="Node" parent="."]
@@ -84,6 +72,8 @@ offset_left = 2069.0
 offset_top = 28.0
 offset_right = 2469.0
 offset_bottom = 697.0
+
+[node name="MovingBackground" parent="." instance=ExtResource("8_t66kt")]
 
 [connection signal="level_switched" from="LevelManager" to="Camera3D" method="_on_level_manager_level_switched"]
 [connection signal="level_switched" from="LevelManager" to="TutorialWindow" method="_on_level_switched"]

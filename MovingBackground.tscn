@@ -1,0 +1,27 @@
+[gd_scene load_steps=4 format=3 uid="uid://bsbj77waho1rq"]
+
+[ext_resource type="Shader" path="res://shaders/MovingBackground.gdshader" id="1_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_j2bxh"]
+render_priority = -1
+shader = ExtResource("1_shader")
+shader_parameter/deep_color = Color(0.630538, 0.681834, 0.86314, 1)
+shader_parameter/mid_color = Color(0.792688, 0.82413, 0.900772, 1)
+shader_parameter/highlight_color = Color(1, 1, 1, 1)
+shader_parameter/flow_speed = 0.038
+shader_parameter/pattern_scale = 2.414
+shader_parameter/noise_scale = 10.0
+shader_parameter/distortion_strength = 0.8
+shader_parameter/ridge_sharpness = 0.356
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_gtdvn"]
+material = SubResource("ShaderMaterial_j2bxh")
+size = Vector2(200, 200)
+
+[node name="OrganicFlowBackground" type="Node3D"]
+
+[node name="BackgroundPlane" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.3, 0)
+cast_shadow = 0
+mesh = SubResource("PlaneMesh_gtdvn")
+skeleton = NodePath("../..")
