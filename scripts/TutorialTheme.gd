@@ -44,7 +44,9 @@ static func apply_theme(window: Control) -> void:
 		font.font_names = ["JetBrains Mono", "Consolas", "DejaVu Sans Mono"]
 		font.antialiasing = TextServer.FONT_ANTIALIASING_LCD
 		rtl.add_theme_font_override("normal_font", font)
-		rtl.add_theme_font_size_override("normal_font_size", 16)
+		rtl.add_theme_font_size_override("normal_font_size", 25)
+		rtl.add_theme_font_override("bold_font", font)
+		rtl.add_theme_font_size_override("bold_font_size", 25)
 		
 		# Set text colors
 		rtl.add_theme_color_override("default_color", Color(0.9, 0.9, 0.9))
@@ -53,7 +55,7 @@ static func apply_theme(window: Control) -> void:
 		
 		# Code highlighting in rich text
 		rtl.add_theme_font_override("mono_font", font)
-		rtl.add_theme_font_size_override("mono_font_size", 14)
+		rtl.add_theme_font_size_override("mono_font_size", 20)
 		rtl.add_theme_color_override("table_odd_row_bg", Color(0.07, 0.07, 0.1))
 		rtl.add_theme_color_override("table_even_row_bg", Color(0.1, 0.1, 0.13))
 	

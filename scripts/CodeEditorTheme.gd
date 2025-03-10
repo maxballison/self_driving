@@ -108,10 +108,10 @@ static func create_theme() -> Theme:
 	theme.set_font("font", "Label", font)
 	theme.set_font("font", "Button", font)
 	
-	theme.set_font_size("font_size", "TextEdit", 20)
-	theme.set_font_size("normal_font_size", "RichTextLabel", 20)
-	theme.set_font_size("font_size", "Label", 16)
-	theme.set_font_size("font_size", "Button", 16)
+	theme.set_font_size("font_size", "TextEdit", 25)
+	theme.set_font_size("normal_font_size", "RichTextLabel", 25)
+	theme.set_font_size("font_size", "Label", 25)
+	theme.set_font_size("font_size", "Button", 25)
 	
 	# Set colors
 	theme.set_color("font_color", "TextEdit", Color(0.9, 0.9, 0.9))

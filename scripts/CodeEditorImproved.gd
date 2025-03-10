@@ -18,7 +18,7 @@ class_name ImprovedCodeEditor
 
 # Editor settings
 @export var min_size: Vector2 = Vector2(400, 300)
-@export var default_font_size: int = 23
+@export var default_font_size: int = 27
 
 # Reference to the interpreter
 @onready var interpreter = get_node("/root/Main/ScriptInterpreter")
@@ -58,7 +58,6 @@ func _ready() -> void:
 		text_edit.text = "# Welcome to the Code Editor\n# Write your code here\n\n"
 	
 	# Force update line counter
-	_update_line_counter()
 	CodeEditorTheme.apply_theme(self)
 
 func _configure_text_edit() -> void:
@@ -94,15 +93,6 @@ func _configure_text_edit() -> void:
 	title_label.add_theme_font_override("font", font)
 	title_label.add_theme_font_size_override("font_size", font_size)
 	
-	# Configure line counter for better alignment
-	line_counter.add_theme_font_override("normal_font", font)
-	line_counter.add_theme_font_size_override("normal_font_size", font_size)
-	line_counter.add_theme_color_override("default_color", Color(0.6, 0.6, 0.6))
-	line_counter.add_theme_constant_override("line_separation", 4)
-	line_counter.size_flags_vertical = SIZE_EXPAND_FILL
-	
-	# Force monospace font for line counter
-	line_counter.bbcode_enabled = true
 
 func create_syntax_highlighter() -> SyntaxHighlighter:
 	var highlighter = CodeHighlighter.new()
@@ -152,7 +142,6 @@ func _gui_input(event: InputEvent) -> void:
 			if new_size.x >= min_size.x and new_size.y >= min_size.y:
 				size = new_size
 				last_valid_size = new_size
-				_update_line_counter()
 
 func _on_title_bar_gui_input(event: InputEvent) -> void:
 	# Handle dragging via the title bar
@@ -184,20 +173,8 @@ func _on_run_button_pressed() -> void:
 	else:
 		push_error("ScriptInterpreter not found!")
 
-func _update_line_counter() -> void:
-	var lines = text_edit.get_line_count()
-	var bbcode_text = ""
-	
-	# Use monospace tag to ensure fixed-width characters
-	bbcode_text += "[code]"
-	for i in range(1, max(lines, 1) + 1):
-		bbcode_text += str(i) + "\n"
-	bbcode_text += "[/code]"
-	
-	line_counter.text = bbcode_text
 
 func _on_text_changed() -> void:
-	_update_line_counter()
 	
 	# Check for line limit
 	var current_lines = text_edit.get_line_count()
