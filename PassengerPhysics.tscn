@@ -1,6 +1,7 @@
-[gd_scene load_steps=13 format=3 uid="uid://crnlf1pmydvva"]
+[gd_scene load_steps=14 format=3 uid="uid://crnlf1pmydvva"]
 
 [ext_resource type="Script" path="res://scripts/PassengerPhysics.gd" id="1_direct"]
+[ext_resource type="PackedScene" uid="uid://x5qxel6t55b7" path="res://tiles/TileEmpty.tscn" id="2_l8420"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_head"]
 radius = 0.15
@@ -141,3 +142,5 @@ surface_material_override/0 = SubResource("StandardMaterial3D_leg")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RagdollBody"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 shape = SubResource("CapsuleShape3D_body")
+
+[node name="Tile" parent="." instance=ExtResource("2_l8420")]

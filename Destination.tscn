@@ -1,6 +1,7 @@
-[gd_scene load_steps=6 format=3 uid="uid://c2dqc3xoqapu4"]
+[gd_scene load_steps=7 format=3 uid="uid://c2dqc3xoqapu4"]
 
 [ext_resource type="Script" path="res://scripts/Destination.gd" id="1_d8qwv"]
+[ext_resource type="PackedScene" uid="uid://x5qxel6t55b7" path="res://tiles/TileEmpty.tscn" id="2_mf2ow"]
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_platform"]
 top_radius = 0.6
@@ -40,3 +41,5 @@ surface_material_override/0 = SubResource("StandardMaterial3D_indicator")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="DeliveryArea"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
 shape = SubResource("CylinderShape3D_area")
+
+[node name="Tile" parent="." instance=ExtResource("2_mf2ow")]

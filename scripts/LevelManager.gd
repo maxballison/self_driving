@@ -8,7 +8,7 @@ var cell_size: float = 1.0
 signal level_switched()
 
 func _ready() -> void:
-	load_level("res://GeneratedLevels/level_5.tscn", Vector2i(1, 1))
+	load_level("res://GeneratedLevels/level_1.tscn", Vector2i(1, 1))
 
 func load_level(scene_path: String, spawn_position: Vector2i) -> void:
 	print("Loading level: ", scene_path)
@@ -71,7 +71,7 @@ func load_level(scene_path: String, spawn_position: Vector2i) -> void:
 		# Clear any existing passengers in car
 		if player.has_method("clear_passengers"):
 			player.clear_passengers()
-			
+		player.should_teleport = true
 		player.update_world_position()
 		
 		# Connect signals if not already connected
