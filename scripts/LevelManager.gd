@@ -104,24 +104,34 @@ func _on_player_door_entered(next_level_path: String, next_level_spawn: Vector2i
 
 func _on_passenger_hit(passenger) -> void:
 	print("Passenger hit by car, restarting level after delay...")
-	
-	# Wait a moment to show the ragdoll effect
-	await get_tree().create_timer(2.0).timeout
-	
-	# Reload the current level
-	var current_path = current_level_instance.scene_file_path
-	load_level(current_path, Vector2i(1, 1))
+	# This function is now primarily for signal response logging
+	# The actual reset is handled by schedule_level_reset
 
-# This is a more direct way to reset the level, called by the player
+# This is the primary way to reset the level, called from multiple places
 func schedule_level_reset(passenger = null) -> void:
 	print("Level reset scheduled after passenger hit!")
 	
-	# If this was called directly by something, make sure the level resets
-	# after a brief delay to show the ragdoll effect
-	get_tree().create_timer(2.0).timeout.connect(func():
+	# Check if a reset is already scheduled (to prevent multiple resets)
+	if has_meta("reset_scheduled"):
+		print("Reset already scheduled, ignoring additional requests")
+		return
+	
+	# Mark that a reset is scheduled
+	set_meta("reset_scheduled", true)
+	
+	# Reset the level after a delay to show the ragdoll effect
+	var timer = get_tree().create_timer(2.0)
+	timer.timeout.connect(func():
+		# Clear the reset flag
+		remove_meta("reset_scheduled")
+		
 		# Reload the current level
 		if current_level_instance:
 			var current_path = current_level_instance.scene_file_path
 			print("Reloading level: ", current_path)
 			load_level(current_path, Vector2i(1, 1))
 	)
+
+func _on_level_completed() -> void:
+	print("Level completed signal received!")
+	# You can add special handling for level completion here

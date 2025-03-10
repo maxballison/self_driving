@@ -37,7 +37,7 @@ var animation_time: float = 0.0 # elapsed time since animation started
 var should_teleport: bool = true  # Flag for instant teleportation
 
 # Physics car body
-@onready var car_physics = $CarPhysics
+@onready var car_physics = $CarPhysicsBody
 @onready var pickup_area = $PassengerPickupArea
 
 func _ready() -> void:
@@ -46,10 +46,15 @@ func _ready() -> void:
 		car_physics.collision_layer = 4  # Layer 3
 		car_physics.collision_mask = 2   # Layer 2 (passengers)
 	
-	# Connect signals
-	if car_physics:
-		if not car_physics.is_connected("body_entered", Callable(self, "_on_car_physics_body_entered")):
-			car_physics.connect("body_entered", Callable(self, "_on_car_physics_body_entered"))
+	# Connect passenger pickup area signals
+	if pickup_area:
+		# Make sure the pickup area can detect passenger collisions
+		pickup_area.collision_mask = 2  # Layer 2 (passengers)
+		pickup_area.monitoring = true
+		
+		# Connect the body_entered signal to detect collisions
+		if not pickup_area.is_connected("body_entered", Callable(self, "_on_pickup_area_body_entered")):
+			pickup_area.connect("body_entered", Callable(self, "_on_pickup_area_body_entered"))
 	
 	update_world_position()
 	update_model_rotation()
@@ -374,16 +379,23 @@ func _process(delta: float) -> void:
 		if car_physics:
 			car_physics.rotation.y = rotation.y
 
-# Physics collision signals
-func _on_car_physics_body_entered(body):
-	# Check if the body belongs to a passenger
-	if body.get_parent() and body.get_parent().has_method("activate_ragdoll"):
+# NEW COLLISION DETECTION
+# This function will be called when any physics body enters the pickup area
+func _on_pickup_area_body_entered(body: Node) -> void:
+	print("Body entered pickup area: ", body.name)
+	
+	# First check if the body is the ragdoll body of a passenger
+	if body is RigidBody3D and body.get_parent() and body.get_parent().has_method("activate_ragdoll"):
 		var passenger = body.get_parent()
-		print("Car hit passenger: ", passenger.name)
+		print("Passenger detected: ", passenger.name)
 		
-		# Directly activate the passenger's ragdoll mode
-		if passenger.has_method("activate_ragdoll"):
-			passenger.activate_ragdoll(self)
+		# Only activate if the passenger is not already picked up or delivered
+		if not passenger.is_picked_up and not passenger.is_delivered and not passenger.is_ragdolling:
+			print("Activating passenger ragdoll")
+			passenger.activate_ragdoll(self, current_direction)
+			emit_signal("passenger_hit", passenger)
 			
-		# Signal that a passenger was hit
-		emit_signal("passenger_hit", passenger)
+			# Directly call the level manager's reset function
+			var level_manager = get_node("/root/Main/LevelManager")
+			if level_manager and level_manager.has_method("schedule_level_reset"):
+				level_manager.schedule_level_reset(passenger)

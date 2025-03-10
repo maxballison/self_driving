@@ -11,10 +11,10 @@ var is_picked_up: bool = false
 var is_delivered: bool = false
 var is_ragdolling: bool = false
 
-# Visual nodes
-@onready var visual_model = $VisualModel
-@onready var destination_indicator = $DestinationIndicator
-@onready var ragdoll_body = $RagdollBody if has_node("RagdollBody") else null
+# Visual nodes - will check existence
+var visual_model = null
+var destination_indicator = null
+var ragdoll_body = null
 
 # Car reference when picked up
 var car_ref: Node3D = null
@@ -25,12 +25,60 @@ signal delivered(passenger)
 signal hit_by_car(passenger)
 
 func _ready():
+	# Debug print for scene structure
+	print("PassengerPhysics structure for ", name, ":")
+	for child in get_children():
+		print("- Child: ", child.name)
+		
+	# Find visual model (might have different name in your project)
+	# Try different possible names
+	visual_model = get_node_or_null("VisualModel")
+	if not visual_model:
+		# Look for any MeshInstance3D or Node3D children that might be the visual model
+		for child in get_children():
+			if (child is MeshInstance3D or child is Node3D) and "ragdoll" not in child.name.to_lower() and "destination" not in child.name.to_lower() and not child is RigidBody3D:
+				visual_model = child
+				print("Found alternative visual model: ", child.name)
+				break
+	
+	# Find destination indicator
+	destination_indicator = get_node_or_null("DestinationIndicator")
+	if not destination_indicator:
+		# Look for any MeshInstance3D children that might be the indicator
+		for child in get_children():
+			if child is MeshInstance3D and "destination" in child.name.to_lower():
+				destination_indicator = child
+				print("Found alternative destination indicator: ", child.name)
+				break
+	
+	# Find ragdoll body
+	ragdoll_body = get_node_or_null("RagdollBody")
+	if not ragdoll_body:
+		# Look for any RigidBody3D children that might be the ragdoll
+		for child in get_children():
+			if child is RigidBody3D:
+				ragdoll_body = child
+				print("Found alternative ragdoll body: ", child.name)
+				break
+	
 	# Set color for destination indicator
 	set_destination_color()
 	
 	# Make sure the rigid body starts in a clean state
 	if ragdoll_body:
+		print("Setting up ragdoll body: ", ragdoll_body.name)
+		ragdoll_body.visible = false
 		ragdoll_body.freeze = true
+		
+		# Ensure ragdoll has proper collision settings
+		ragdoll_body.collision_layer = 2  # Layer 2
+		ragdoll_body.collision_mask = 7   # Layers 1, 2, 3
+		
+		# Connect signal to monitor the ragdoll's collisions
+		if not ragdoll_body.is_connected("body_entered", Callable(self, "_on_ragdoll_body_entered")):
+			ragdoll_body.body_entered.connect(_on_ragdoll_body_entered)
+	else:
+		print("WARNING: No ragdoll body found for passenger: ", name)
 
 func _process(delta):
 	# Update indicator position when picked up
@@ -53,15 +101,15 @@ func set_destination_color():
 	var color_index = destination_id % colors.size()
 	var color = colors[color_index]
 	
-	# Create new material with emission
-	var material = StandardMaterial3D.new()
-	material.albedo_color = color
-	material.emission_enabled = true
-	material.emission = color
-	material.emission_energy_multiplier = 1.2
-	
-	# Apply the material
+	# Apply the color to the indicator if it exists
 	if destination_indicator:
+		# Create new material with emission
+		var material = StandardMaterial3D.new()
+		material.albedo_color = color
+		material.emission_enabled = true
+		material.emission = color
+		material.emission_energy_multiplier = 1.2
+		
 		destination_indicator.material_override = material
 
 func pick_up(car: Node3D) -> bool:
@@ -72,7 +120,7 @@ func pick_up(car: Node3D) -> bool:
 	car_ref = car
 	is_picked_up = true
 	
-	# Hide the visual model
+	# Hide the visual model if it exists
 	if visual_model:
 		visual_model.visible = false
 	
@@ -97,7 +145,7 @@ func deliver() -> bool:
 	emit_signal("delivered", self)
 	return true
 
-# This is called directly by the car when a collision is detected
+# This is called when the car collides with the passenger
 func activate_ragdoll(car = null, car_direction: int = -1):
 	print("PASSENGER: Activating ragdoll physics! Car direction: ", car_direction)
 	
@@ -107,13 +155,17 @@ func activate_ragdoll(car = null, car_direction: int = -1):
 	is_ragdolling = true
 	car_ref = car
 	
-	# Hide normal model
+	# Hide normal model and destination indicator
 	if visual_model:
 		visual_model.visible = false
+	
+	if destination_indicator:
+		destination_indicator.visible = false
 	
 	# IMPORTANT: Make sure the ragdoll model is immediately displayed
 	# and positioned correctly
 	if ragdoll_body:
+		print("Making ragdoll visible and unfreezing")
 		ragdoll_body.visible = true
 		
 		# Calculate a force vector opposite to the car's movement direction
@@ -133,9 +185,11 @@ func activate_ragdoll(car = null, car_direction: int = -1):
 		
 		# Unfreeze physics immediately
 		ragdoll_body.freeze = false
+		if ragdoll_body.has_method("set_freeze_mode"):
+			ragdoll_body.set_freeze_mode(RigidBody3D.FREEZE_MODE_KINEMATIC)
 		
-		# Apply forces immediately instead of with a delay
-		ragdoll_body.apply_impulse(impulse)
+		# Apply forces immediately
+		ragdoll_body.apply_central_impulse(impulse)
 		
 		# Add random torque for tumbling
 		var random_torque = Vector3(
@@ -149,9 +203,25 @@ func activate_ragdoll(car = null, car_direction: int = -1):
 		# Make sure we emit the signal
 		print("Passenger emitting hit_by_car signal")
 		emit_signal("hit_by_car", self)
+		
+		# Ensure level gets reset (redundant but safe approach)
+		var level_manager = get_node("/root/Main/LevelManager")
+		if level_manager and level_manager.has_method("schedule_level_reset"):
+			level_manager.schedule_level_reset(self)
+	else:
+		print("ERROR: No ragdoll body available for passenger: ", name)
+		# Still try to reset the level even without ragdoll
+		var level_manager = get_node("/root/Main/LevelManager")
+		if level_manager and level_manager.has_method("schedule_level_reset"):
+			level_manager.schedule_level_reset(self)
+
+# In case the ragdoll collides with something
+func _on_ragdoll_body_entered(body):
+	print("Ragdoll collided with: ", body.name)
+	# You can add additional collision responses here if needed
 
 func update_indicator_position():
-	if not is_picked_up or not car_ref:
+	if not is_picked_up or not car_ref or not destination_indicator:
 		return
 		
 	# Check if we need to reparent the indicator

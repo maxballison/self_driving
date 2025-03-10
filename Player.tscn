@@ -30,7 +30,7 @@ emission = Color(1, 0.2, 0.2, 1)
 emission_energy_multiplier = 1.5
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_car_hitbox"]
-size = Vector3(0.8, 0.3, 1.2)
+size = Vector3(0.608398, 0.3, 0.920898)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_car_area"]
 size = Vector3(1, 0.5, 1.5)
