@@ -1,26 +1,26 @@
 {
-  "res://GeneratedLevels/level_1.tscn": [
-	"[b]Welcome to the Self-Driving Car Coding Adventure![/b]\n\nIn this game, you'll learn to write code to control your car through various levels.",
-	"Use the [color=#80CCFF]Code Editor[/color] to write instructions for your car.\n\nFor example, try typing:\n[code]drive()[/code]\nand then click [color=#80CCFF]Run[/color] to move your car forward in the direction it's facing.",
-	"The basic commands you can use are:\n[code]drive()[/code] - Move forward in the direction you're facing\n[code]turn_left()[/code] - Rotate 90° counter-clockwise\n[code]turn_right()[/code] - Rotate 90° clockwise",
-	"Try to reach the [color=#FFCC80]door[/color] to advance to the next level.\n\nGood luck on your coding journey!"
-  ],
-  "res://GeneratedLevels/level_2.tscn": [
-	"[b]Level 2: Variables & Direction[/b]\n\nNow let's learn about variables. Variables let you store and reuse values.",
-	"Try creating a variable to store how many steps to move:\n[code]var steps = 3\nfor i in range(steps):\n    drive()[/code]",
-	"You can also create loops with turning:\n[code]for i in range(4):\n    drive()\n    turn_right()[/code]",
-	"Use variables to make your code cleaner and more flexible!"
-  ],
-  "res://GeneratedLevels/level_3.tscn": [
-	"[b]Level 3: Loops & Navigation[/b]\n\nLoops let you repeat code multiple times without writing it again and again.",
-	"Try making the car drive in a square pattern:\n[code]for i in range(4):\n    drive()\n    turn_right()[/code]",
-	"You can also use a [color=#80CCFF]while loop[/color]:\n[code]var steps = 0\nwhile steps < 3:\n    drive()\n    steps = steps + 1[/code]",
-	"Try to navigate to the exit with as few lines of code as possible!"
-  ],
-  "res://GeneratedLevels/level_4.tscn": [
-	"[b]Level 4: Functions[/b]\n\nFunctions let you group code that belongs together.",
-	"Define a function like this:\n[code]func drive_square():\n    for i in range(4):\n        drive()\n        turn_right()[/code]",
-	"Then call it like this:\n[code]drive_square()[/code]",
-	"Try creating functions for different driving patterns to navigate this complex maze!"
-  ]
-}
+	"res://GeneratedLevels/level_1.tscn": [
+	  "[b]Welcome to the Self-Driving Taxi Adventure![/b]\n\nIn this game, you'll learn to write code to control your taxi and pick up passengers.",
+	  "Use the [color=#80CCFF]Code Editor[/color] to write instructions for your taxi.\n\nFor example, try typing:\n[code]drive()[/code]\nand then click [color=#80CCFF]Run[/color] to move your taxi forward in the direction it's facing.",
+	  "The basic commands you can use are:\n[code]drive()[/code] - Move forward in the direction you're facing\n[code]turn_left()[/code] - Rotate 90° counter-clockwise\n[code]turn_right()[/code] - Rotate 90° clockwise\n[code]pick_up()[/code] - Pick up a passenger next to your taxi\n[code]deliver()[/code] - Deliver a passenger to their matching destination",
+	  "Each passenger has a colored indicator showing their destination.\n\nBe careful not to hit passengers with your taxi! Hitting a passenger will restart the level.\n\nGood luck on your taxi service coding journey!"
+	],
+	"res://GeneratedLevels/level_2.tscn": [
+	  "[b]Level 2: Passengers & Destinations[/b]\n\nIn this level, you'll learn to pick up passengers and deliver them to their destinations.",
+	  "Position your taxi next to a passenger and use:\n[code]pick_up()[/code]\n\nThe passenger's colored indicator shows their destination.",
+	  "To deliver a passenger, drive to their matching destination (same color) and use:\n[code]deliver()[/code]",
+	  "Complete the level by delivering all passengers to their destinations. Remember, your taxi can hold multiple passengers at once!"
+	],
+	"res://GeneratedLevels/level_3.tscn": [
+	  "[b]Level 3: Efficient Routing[/b]\n\nNow let's optimize your delivery route using loops and planning.",
+	  "Plan an efficient route to pick up and deliver multiple passengers.\n\nFor example:\n[code]drive()\nturn_right()\ndrive()\npick_up()\nturn_left()\ndrive()\ndeliver()[/code]",
+	  "You can use loops to repeat common movements:\n[code]for i in range(3):\n    drive()\n    turn_right()[/code]",
+	  "Try to deliver all passengers in as few lines of code as possible!"
+	],
+	"res://GeneratedLevels/level_4.tscn": [
+	  "[b]Level 4: Functions & Advanced Routing[/b]\n\nCreate functions to make your code more organized and reusable.",
+	  "Define a function like this:\n[code]func go_to_passenger():\n    drive()\n    turn_right()\n    drive()\n    pick_up()[/code]",
+	  "Then call it like this:\n[code]go_to_passenger()[/code]",
+	  "Try creating functions for different patterns like navigating to a passenger, picking them up, and delivering them to their destination."
+	]
+  }

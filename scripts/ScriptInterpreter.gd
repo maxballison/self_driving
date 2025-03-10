@@ -170,6 +170,19 @@ func _interpret_line(line: String, indent_level: int) -> String:
 			return "MOVE"  # Yield for turn animation
 		else:
 			return "ERROR"
+	# Add new function interpretations
+	elif line.begins_with("pick_up("):
+		var ok = _interpret_pick_up_statement(line)
+		if ok:
+			return "MOVE"  # Yield for animation
+		else:
+			return "ERROR"
+	elif line.begins_with("deliver("):
+		var ok = _interpret_deliver_statement(line)
+		if ok:
+			return "MOVE"  # Yield for animation
+		else:
+			return "ERROR"
 	elif "=" in line and not line.begins_with("if ") and not line.begins_with("while "):
 		# Assignment statement (without var)
 		var result_ok = _interpret_assignment(line)
@@ -309,6 +322,39 @@ func _handle_while_loop(line: String, indent_level: int) -> String:
 		push_warning("While loop iteration limit reached.")
 	current_line = block_end
 	return "NONE"
+
+func _interpret_pick_up_statement(line: String) -> bool:
+	# pick_up() takes no parameters
+	var inside = _extract_between(line, "pick_up(", ")")
+	inside = inside.strip_edges()
+	
+	# Verify no arguments were passed
+	if inside.length() > 0:
+		push_error("pick_up() doesn't take any parameters.")
+		return false
+		
+	if player:
+		return player.pick_up()
+	else:
+		push_error("No player assigned to interpreter.")
+		return false
+
+# New function to interpret deliver() statement
+func _interpret_deliver_statement(line: String) -> bool:
+	# deliver() takes no parameters
+	var inside = _extract_between(line, "deliver(", ")")
+	inside = inside.strip_edges()
+	
+	# Verify no arguments were passed
+	if inside.length() > 0:
+		push_error("deliver() doesn't take any parameters.")
+		return false
+		
+	if player:
+		return player.deliver()
+	else:
+		push_error("No player assigned to interpreter.")
+		return false
 
 func _interpret_var_declaration(line: String) -> bool:
 	# e.g., "var dir = \"East\""

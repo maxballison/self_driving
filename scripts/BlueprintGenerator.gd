@@ -1,8 +1,8 @@
 @tool
 extends EditorScript
 
-@export var blueprint_file_path: String = "res://blueprints/blueprint4.txt"
-@export var output_scene_path: String = "res://GeneratedLevels/level_4.tscn"
+@export var blueprint_file_path: String = "res://blueprints/blueprint5.txt"
+@export var output_scene_path: String = "res://GeneratedLevels/level_5.tscn"
 
 var tile_mapping := {
 	'#': "res://tiles/TileWall.tscn",
@@ -10,6 +10,8 @@ var tile_mapping := {
 	'x': "res://tiles/TileWall.tscn",
 	'e': "res://tiles/Enemy.tscn",
 	'd': "res://tiles/TileDoor.tscn",
+	'p': "res://PassengerPhysics.tscn",  # New: Physics-based Passenger
+	'D': "res://Destination.tscn",  # Destination
 }
 
 func _run() -> void:
@@ -45,7 +47,35 @@ func generate_level_from_blueprint(source_file: String, target_scene: String) ->
 	var half_height = float(max_height - 1) * 0.5
 
 	var tile_counter = 0
+	var passenger_counter = 0
+	var destination_counter = 0
 
+	# First pass: Count number of passengers and destinations for ID assignment
+	var passenger_count = 0
+	var destination_count = 0
+	for y in range(lines.size()):
+		var line = lines[y]
+		for x in range(line.length()):
+			var c = line[x]
+			if c == 'p':
+				passenger_count += 1
+			elif c == 'D':
+				destination_count += 1
+
+	# Create mapping arrays for passenger to destination assignment
+	var passenger_ids = []
+	var destination_ids = []
+	
+	# Create IDs (we'll use the same number of IDs for both passengers and destinations)
+	var total_entities = max(passenger_count, destination_count)
+	for i in range(total_entities):
+		passenger_ids.append(i)
+		destination_ids.append(i)
+	
+	# Shuffle the destination IDs for variety
+	destination_ids.shuffle()
+
+	# Second pass: Create the actual tile instances
 	for y in range(lines.size()):
 		var line = lines[y]
 		for x in range(line.length()):
@@ -56,10 +86,29 @@ func generate_level_from_blueprint(source_file: String, target_scene: String) ->
 					var tile_scene = load(scene_path)  # a PackedScene
 					if tile_scene:
 						var tile_instance = tile_scene.instantiate()
-						# Give the node a name that includes the scene’s filename plus a unique number
+						
+						# Give the node a name that includes the scene's filename plus a unique number
 						var scene_name = scene_path.get_file().get_basename()  # e.g., "TileEmpty"
-						tile_instance.name = scene_name + "_" + str(tile_counter)
-						tile_counter += 1
+						
+						if c == 'p':
+							# This is a passenger - assign destination ID
+							if passenger_counter < passenger_ids.size():
+								var destination_id = passenger_ids[passenger_counter]
+								tile_instance.destination_id = destination_id
+								tile_instance.passenger_name = "Passenger_" + str(destination_id)
+							tile_instance.name = scene_name + "_" + str(passenger_counter)
+							passenger_counter += 1
+						elif c == 'D':
+							# This is a destination - assign matching ID
+							if destination_counter < destination_ids.size():
+								var destination_id = destination_ids[destination_counter]
+								tile_instance.destination_id = destination_id
+								tile_instance.destination_name = "Destination_" + str(destination_id)
+							tile_instance.name = scene_name + "_" + str(destination_counter)
+							destination_counter += 1
+						else:
+							tile_instance.name = scene_name + "_" + str(tile_counter)
+							tile_counter += 1
 
 						# Position the tile
 						tile_instance.position = Vector3(
@@ -85,5 +134,6 @@ func generate_level_from_blueprint(source_file: String, target_scene: String) ->
 	var err = ResourceSaver.save(packed_scene, target_scene)
 	if err == OK:
 		print("Level generated and saved to: " + target_scene)
+		print("Created " + str(passenger_counter) + " passengers and " + str(destination_counter) + " destinations")
 	else:
 		push_error("Error saving scene: " + str(err))

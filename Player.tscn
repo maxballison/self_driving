@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://bm4kef2fvrw2n"]
+[gd_scene load_steps=10 format=3 uid="uid://bm4kef2fvrw2n"]
 
 [ext_resource type="Script" path="res://scripts/Player.gd" id="1_mjbbh"]
 
@@ -28,6 +28,12 @@ albedo_color = Color(1, 0.2, 0.2, 1)
 emission_enabled = true
 emission = Color(1, 0.2, 0.2, 1)
 emission_energy_multiplier = 1.5
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_car_hitbox"]
+size = Vector3(0.8, 0.3, 1.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_car_area"]
+size = Vector3(1, 0.5, 1.5)
 
 [node name="Player" type="Node3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
@@ -89,3 +95,18 @@ material = SubResource("StandardMaterial3D_indicator")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.109427, 0)
 radius = 0.08
 material = SubResource("StandardMaterial3D_indicator")
+
+[node name="CarPhysicsBody" type="AnimatableBody3D" parent="."]
+collision_layer = 4
+collision_mask = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CarPhysicsBody"]
+shape = SubResource("BoxShape3D_car_hitbox")
+
+[node name="PassengerPickupArea" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 2
+monitorable = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PassengerPickupArea"]
+shape = SubResource("BoxShape3D_car_area")
