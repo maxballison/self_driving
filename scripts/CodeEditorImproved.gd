@@ -38,6 +38,10 @@ var comment_color = Color(0.5, 0.5, 0.5)   # Gray for comments
 var background_color = Color(0.12, 0.12, 0.15) # Dark background
 var text_color = Color(0.9, 0.9, 0.9)      # Light text
 
+# Line highlighting
+var original_line_color: Color = Color(0.2, 0.2, 0.25)
+var highlight_color: Color = Color(1, 1, 1, 0.5)  # White with some transparency
+
 func _ready() -> void:
 	# Set window title
 	title_label.text = title
@@ -59,6 +63,9 @@ func _ready() -> void:
 	
 	# Force update line counter
 	CodeEditorTheme.apply_theme(self)
+	
+	# Store original line color
+	original_line_color = text_edit.get_theme_color("current_line_color", "TextEdit")
 
 func _configure_text_edit() -> void:
 	# Basic editor settings
@@ -103,7 +110,7 @@ func create_syntax_highlighter() -> SyntaxHighlighter:
 		highlighter.add_keyword_color(keyword, keyword_color)
 	
 	# Add special functions
-	var functions = ["move", "range"]
+	var functions = ["drive", "turn_right", "turn_left", "pick_up", "drop_off", "range"]
 	for func_name in functions:
 		highlighter.add_keyword_color(func_name, function_color)
 	
@@ -121,6 +128,48 @@ func create_syntax_highlighter() -> SyntaxHighlighter:
 	highlighter.number_color = number_color
 	
 	return highlighter
+
+# Method to highlight the currently executing line
+func highlight_executing_line(line_number: int) -> void:
+	if line_number >= 0 and line_number < text_edit.get_line_count():
+		# Store the original caret position and selection
+		var original_caret_line = text_edit.get_caret_line()
+		var original_caret_column = text_edit.get_caret_column()
+		var had_selection = text_edit.has_selection()
+		var select_from_line = -1
+		var select_from_column = -1
+		var select_to_line = -1
+		var select_to_column = -1
+		
+		if had_selection:
+			select_from_line = text_edit.get_selection_from_line()
+			select_from_column = text_edit.get_selection_from_column()
+			select_to_line = text_edit.get_selection_to_line()
+			select_to_column = text_edit.get_selection_to_column()
+		
+		# Flash the current line color with white
+		text_edit.add_theme_color_override("current_line_color", highlight_color)
+		
+		# Move the caret to this line to highlight it
+		text_edit.set_caret_line(line_number)
+		
+		# Ensure the line is visible by setting the caret
+		# Moving the caret automatically scrolls to make the line visible
+		
+		# Schedule unhighlighting after a delay
+		var timer = get_tree().create_timer(0.2)  # Flash for 200ms
+		timer.timeout.connect(func():
+			# Restore original line color
+			text_edit.add_theme_color_override("current_line_color", original_line_color)
+			
+			# Restore original caret position and selection
+			text_edit.set_caret_line(original_caret_line)
+			text_edit.set_caret_column(original_caret_column)
+			
+			if had_selection:
+				text_edit.select(select_from_line, select_from_column, 
+								select_to_line, select_to_column)
+		)
 
 func _gui_input(event: InputEvent) -> void:
 	# Handle mouse button events (for dragging the entire window)

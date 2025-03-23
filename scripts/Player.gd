@@ -178,12 +178,12 @@ func pick_up() -> bool:
 	return false
 
 # New function: deliver a passenger
-func deliver() -> bool:
+func drop_off() -> bool:
 	if is_moving or is_turning:
 		return false
 	
 	if current_passengers.size() == 0:
-		print("No passengers in car to deliver!")
+		print("No passengers in car to drop off!")
 		return false
 	
 	# Check adjacent cells for destinations
@@ -197,18 +197,18 @@ func deliver() -> bool:
 			for i in range(current_passengers.size()):
 				var passenger = current_passengers[i]
 				if passenger.destination_id == destination.destination_id:
-					if passenger.deliver():
+					if passenger.deliver():  # Note: still using passenger.deliver() for compatibility
 						# Remove from current passengers array
 						current_passengers.remove_at(i)
 						
 						# Remove from passenger_map (important to prevent collision after delivery)
-						for map_pos in passenger_map.keys():
+						for map_pos in passenger_map:
 							if passenger_map[map_pos] == passenger:
 								passenger_map.erase(map_pos)
 								break
 								
 						destination.complete_delivery()
-						print("Delivered passenger to destination ", destination.destination_id)
+						print("Dropped off passenger at destination ", destination.destination_id)
 						emit_signal("passenger_delivered", passenger, destination)
 						
 						# Check if all passengers have been delivered
@@ -253,6 +253,8 @@ func refresh_nearby_passengers() -> void:
 
 # Check if all passengers have been delivered
 # Check if all passengers have been delivered
+# Replace the entire check_level_completion function in Player.gd with this:
+
 func check_level_completion() -> void:
 	# Get the level from the main scene
 	var level_manager = get_node("/root/Main/LevelManager")
@@ -282,7 +284,6 @@ func check_level_completion() -> void:
 		
 		# Get next level information from the level itself
 		var next_level = current_level.next_level_path
-		var next_spawn = current_level.next_level_spawn
 		
 		# If next_level_path is empty, try to find it from a door
 		if next_level == "":
@@ -291,7 +292,6 @@ func check_level_completion() -> void:
 				var door = door_map[door_pos]
 				if door.has_method("get"):
 					next_level = door.get("next_level_path")
-					next_spawn = door.get("next_level_spawn")
 					break
 		
 		# Go to next level after a delay if we have a path
@@ -306,9 +306,9 @@ func check_level_completion() -> void:
 				
 			var timer = get_tree().create_timer(transition_delay)
 			timer.timeout.connect(func():
-				emit_signal("door_entered", next_level, next_spawn)
+				# Just pass the next level path - spawn position will be determined by the level itself
+				emit_signal("door_entered", next_level, Vector2i(1, 1))
 			)
-
 
 # Helper function to start the turn animation
 func start_turn_animation() -> void:

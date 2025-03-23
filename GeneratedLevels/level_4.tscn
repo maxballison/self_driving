@@ -9,6 +9,8 @@
 [node name="GeneratedLevel" type="Node3D"]
 script = ExtResource("1_s4nps")
 next_level_path = "res://GeneratedLevels/level_5.tscn"
+start_position = Vector2i(5, 1)
+start_direction = 3
 
 [node name="TileWall_0" parent="." instance=ExtResource("2_ep4tr")]
 

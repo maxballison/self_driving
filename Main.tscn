@@ -78,3 +78,4 @@ offset_bottom = 831.0
 [connection signal="level_switched" from="LevelManager" to="Camera3D" method="_on_level_manager_level_switched"]
 [connection signal="level_switched" from="LevelManager" to="TutorialWindow" method="_on_level_switched"]
 [connection signal="door_entered" from="Player" to="ScriptInterpreter" method="_on_player_door_entered"]
+[connection signal="passenger_hit" from="Player" to="ScriptInterpreter" method="_on_passenger_hit"]

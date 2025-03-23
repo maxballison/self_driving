@@ -16,9 +16,11 @@ var functions: Dictionary = {}
 # Whether we are currently interpreting
 var is_running: bool = false
 
+var code_editor = null
+
 func _ready() -> void:
-	# Nothing special on ready
-	pass
+	# Find the code editor for line highlighting
+	code_editor = get_node_or_null("/root/Main/CodeEditorImproved")
 
 # Called by the CodeEditor script to run user code asynchronously
 func execute_script(script_text: String) -> void:
@@ -43,7 +45,7 @@ func execute_script(script_text: String) -> void:
 
 	await _run_interpreter(0)
 	is_running = false
-
+	
 # First pass to identify all functions in the code
 func _register_functions() -> void:
 	var line_idx = 0
@@ -79,6 +81,10 @@ func _run_interpreter(indent_level: int) -> void:
 		# we've reached the end of this block, so return
 		if line_indent < indent_level:
 			return
+
+		# Highlight the current line in the code editor
+		if code_editor != null and code_editor.has_method("highlight_executing_line"):
+			code_editor.highlight_executing_line(current_line)
 
 		current_line += 1
 
@@ -177,10 +183,17 @@ func _interpret_line(line: String, indent_level: int) -> String:
 			return "MOVE"  # Yield for animation
 		else:
 			return "ERROR"
-	elif line.begins_with("deliver("):
-		var ok = _interpret_deliver_statement(line)
+	elif line.begins_with("drop_off("):  # Changed from deliver to drop_off
+		var ok = _interpret_drop_off_statement(line)
 		if ok:
 			return "MOVE"  # Yield for animation
+		else:
+			return "ERROR"
+	# Support older "deliver()" calls for backward compatibility
+	elif line.begins_with("deliver("):
+		var ok = _interpret_drop_off_statement(line.replace("deliver(", "drop_off("))
+		if ok:
+			return "MOVE"
 		else:
 			return "ERROR"
 	elif "=" in line and not line.begins_with("if ") and not line.begins_with("while "):
@@ -196,6 +209,23 @@ func _interpret_line(line: String, indent_level: int) -> String:
 	else:
 		push_warning("Unrecognized statement: %s" % line)
 		return "NONE"
+
+# New function to interpret drop_off() statement
+func _interpret_drop_off_statement(line: String) -> bool:
+	# drop_off() takes no parameters
+	var inside = _extract_between(line, "drop_off(", ")")
+	inside = inside.strip_edges()
+	
+	# Verify no arguments were passed
+	if inside.length() > 0:
+		push_error("drop_off() doesn't take any parameters.")
+		return false
+		
+	if player:
+		return player.drop_off()  # Call the new drop_off function
+	else:
+		push_error("No player assigned to interpreter.")
+		return false
 
 func _handle_for_loop(line: String, indent_level: int) -> String:
 	# e.g., "for i in range(3):"
@@ -339,22 +369,6 @@ func _interpret_pick_up_statement(line: String) -> bool:
 		push_error("No player assigned to interpreter.")
 		return false
 
-# New function to interpret deliver() statement
-func _interpret_deliver_statement(line: String) -> bool:
-	# deliver() takes no parameters
-	var inside = _extract_between(line, "deliver(", ")")
-	inside = inside.strip_edges()
-	
-	# Verify no arguments were passed
-	if inside.length() > 0:
-		push_error("deliver() doesn't take any parameters.")
-		return false
-		
-	if player:
-		return player.deliver()
-	else:
-		push_error("No player assigned to interpreter.")
-		return false
 
 func _interpret_var_declaration(line: String) -> bool:
 	# e.g., "var dir = \"East\""
@@ -638,4 +652,9 @@ func _extract_function_params(func_line: String) -> Array:
 
 
 func _on_player_door_entered(next_level_path: String, next_level_spawn: Vector2i) -> void:
+	is_running = false
+	
+func _on_passenger_hit(passenger) -> void:
+	# Stop code execution when a passenger is hit
+	print("ScriptInterpreter: Stopping execution due to passenger hit")
 	is_running = false

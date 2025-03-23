@@ -6,8 +6,11 @@ extends Node3D
 
 # Add exported variables for the next level
 @export var next_level_path: String = ""
-@export var next_level_spawn: Vector2i = Vector2i(1, 1)
 @export var transition_delay: float = 2.0  # Seconds to wait before transitioning
+
+# New variables for level start position and direction
+@export var start_position: Vector2i = Vector2i(1, 1)
+@export var start_direction: int = 1  # Default: East (Direction.EAST in Player.gd)
 
 # This will store the "blueprint" characters for each cell.
 @export var tile_data: Array = []

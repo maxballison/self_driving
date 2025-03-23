@@ -1,26 +1,36 @@
 {
-	"res://GeneratedLevels/level_1.tscn": [
-	  "[b]Welcome to the Self-Driving Taxi Adventure![/b]\n\nIn this game, you'll learn to write code to control your taxi and pick up passengers.",
-	  "Use the [color=#80CCFF]Code Editor[/color] to write instructions for your taxi.\n\nFor example, try typing:\n[code]drive()[/code]\nand then click [color=#80CCFF]Run[/color] to move your taxi forward in the direction it's facing.",
-	  "The basic commands you can use are:\n[code]drive()[/code] - Move forward in the direction you're facing\n[code]turn_left()[/code] - Rotate 90° counter-clockwise\n[code]turn_right()[/code] - Rotate 90° clockwise\n[code]pick_up()[/code] - Pick up a passenger next to your taxi\n[code]deliver()[/code] - Deliver a passenger to their matching destination",
-	  "Each passenger has a colored indicator showing their destination.\n\nBe careful not to hit passengers with your taxi! Hitting a passenger will restart the level.\n\nGood luck on your taxi service coding journey!"
-	],
-	"res://GeneratedLevels/level_2.tscn": [
-	  "[b]Level 2: Passengers & Destinations[/b]\n\nIn this level, you'll learn to pick up passengers and deliver them to their destinations.",
-	  "Position your taxi next to a passenger and use:\n[code]pick_up()[/code]\n\nThe passenger's colored indicator shows their destination.",
-	  "To deliver a passenger, drive to their matching destination (same color) and use:\n[code]deliver()[/code]",
-	  "Complete the level by delivering all passengers to their destinations. Remember, your taxi can hold multiple passengers at once!"
-	],
-	"res://GeneratedLevels/level_3.tscn": [
-	  "[b]Level 3: Efficient Routing[/b]\n\nNow let's optimize your delivery route using loops and planning.",
-	  "Plan an efficient route to pick up and deliver multiple passengers.\n\nFor example:\n[code]drive()\nturn_right()\ndrive()\npick_up()\nturn_left()\ndrive()\ndeliver()[/code]",
-	  "You can use loops to repeat common movements:\n[code]for i in range(3):\n    drive()\n    turn_right()[/code]",
-	  "Try to deliver all passengers in as few lines of code as possible!"
-	],
-	"res://GeneratedLevels/level_4.tscn": [
-	  "[b]Level 4: Functions & Advanced Routing[/b]\n\nCreate functions to make your code more organized and reusable.",
-	  "Define a function like this:\n[code]func go_to_passenger():\n    drive()\n    turn_right()\n    drive()\n    pick_up()[/code]",
-	  "Then call it like this:\n[code]go_to_passenger()[/code]",
-	  "Try creating functions for different patterns like navigating to a passenger, picking them up, and delivering them to their destination."
-	]
-  }
+  "res://GeneratedLevels/level_1.tscn": [
+	"[b]Welcome to the Self-Driving Taxi Adventure![/b]\n\nIn this game, you'll write code to control your taxi and navigate through various challenges.",
+	"Use the [color=#80CCFF]Code Editor[/color] to write instructions for your taxi.\n\nThe basic movement commands are:\n[code]drive()[/code] - Move forward in the direction you're facing\n[code]turn_left()[/code] - Rotate 90° counter-clockwise\n[code]turn_right()[/code] - Rotate 90° clockwise",
+	"Try writing a simple program to move your taxi:\n[code]drive()\nturn_right()\ndrive()[/code]\n\nThen click the [color=#80FF80]Run[/color] button to execute your code.",
+	"Watch carefully as each line executes! The current command being run will briefly highlight in the editor.\n\nYour goal is to reach the door at the end of the level. Good luck!"
+  ],
+  
+  "res://GeneratedLevels/level_2.tscn": [
+	"[b]Level 2: Passengers & Destinations[/b]\n\nIn this level, you'll learn to pick up passengers and drop them off at their destinations.",
+	"When a passenger is nearby, you can use:\n[code]pick_up()[/code]\n\nThe passenger will be loaded into your taxi, and a colored indicator will appear above your taxi showing their destination.",
+	"Drive to the matching colored destination and use:\n[code]drop_off()[/code]\n\nThis will deliver the passenger to their destination.",
+	"Be careful not to hit passengers with your taxi! If you collide with a passenger, the level will restart and your code execution will stop.\n\nTry this sequence:\n[code]drive()\npick_up()\ndrive()\ndrive()\ndrop_off()[/code]"
+  ],
+  
+  "res://GeneratedLevels/level_3.tscn": [
+	"[b]Level 3: For Loops[/b]\n\nThis level introduces loops to make your code more efficient and handle repetitive tasks.",
+	"Instead of writing the same command multiple times, you can use a [color=#80CCFF]for loop[/color]:\n[code]for i in range(5):\n    drive()[/code]\n\nThis will run the [code]drive()[/code] command 5 times.",
+	"You can put any commands inside a loop, including turns:\n[code]for i in range(3):\n    drive()\n    turn_right()[/code]\n\nNotice how indentation (spaces at the start of the line) is important to define what's inside the loop.",
+	"Loops are perfect for navigating the longer corridor in this level. Try to combine loops with pickup and drop-off commands to deliver your passenger efficiently."
+  ],
+  
+  "res://GeneratedLevels/level_4.tscn": [
+	"[b]Level 4: The Challenge[/b]\n\nThis level is a challenge to test your skills. You'll need to apply everything you've learned so far.",
+	"The layout is more complex, requiring careful navigation. Plan your route before writing your code.",
+	"Remember these tips:\n- Break down the problem into smaller steps\n- Use loops for repeated movements\n- Be careful around corners\n- Position your taxi precisely next to passengers for pickup",
+	"If you get stuck, try sketching the path on paper first, then translate it into code. There are multiple ways to solve this challenge!"
+  ],
+  
+  "res://GeneratedLevels/level_5.tscn": [
+	"[b]Level 5: Multiple Passengers[/b]\n\nNow you'll deal with multiple passengers and destinations simultaneously.",
+	"Your taxi can hold multiple passengers at once. Each passenger has their own colored indicator showing their destination.",
+	"When you have multiple passengers, make sure to drop each one at their matching colored destination.\n\nNote that the [code]drop_off()[/code] command will only work if you have a passenger whose destination matches one nearby.",
+	"Try to plan an efficient route that picks up and delivers all passengers with minimum driving distance.\n\nConsider creating a function to organize your code better:\n[code]func go_to_position(x, y):\n    # Your navigation code here[/code]"
+  ]
+}
