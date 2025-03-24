@@ -25,7 +25,8 @@ extends Node3D
 func _ready() -> void:
 	populate_tile_data_and_entities()
 	place_floor_tiles()
-	
+
+
 
 func populate_tile_data_and_entities() -> void:
 	# Initialize tile_data as a 2D array matching grid_width and grid_height
@@ -95,5 +96,5 @@ func place_floor_tiles() -> void:
 			for y in range(grid_height):
 				var floor_instance = floor_scene.instantiate()
 				floor_instance.name = "TileFloor_" + str(x) + "_" + str(y)
-				floor_instance.transform.origin = Vector3(float(x) * cell_size, -0.1, float(y) * cell_size)
+				floor_instance.transform.origin = Vector3(float(x) * cell_size, -0.2, float(y) * cell_size)
 				add_child(floor_instance)
