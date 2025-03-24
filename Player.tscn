@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://bm4kef2fvrw2n"]
+[gd_scene load_steps=16 format=3 uid="uid://bm4kef2fvrw2n"]
 
 [ext_resource type="Script" path="res://scripts/Player.gd" id="1_mjbbh"]
 
@@ -6,9 +6,12 @@
 size = Vector3(0.8, 0.3, 1.2)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_car_body"]
-albedo_color = Color(0.2, 0.4, 0.8, 1)
+albedo_color = Color(1, 0.8, 0.2, 1)
 metallic = 0.7
 roughness = 0.2
+emission_enabled = true
+emission = Color(1, 0.8, 0.2, 1)
+emission_energy_multiplier = 0.2
 
 [sub_resource type="BoxMesh" id="BoxMesh_car_cabin"]
 size = Vector3(0.6, 0.25, 0.5)
@@ -18,16 +21,59 @@ albedo_color = Color(0.15, 0.3, 0.6, 1)
 metallic = 0.6
 roughness = 0.3
 
+[sub_resource type="BoxMesh" id="BoxMesh_taxi_sign"]
+size = Vector3(0.4, 0.1, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_taxi_sign"]
+albedo_color = Color(0.2, 0.2, 0.2, 1)
+emission_enabled = true
+emission = Color(1, 0.8, 0.2, 1)
+
 [sub_resource type="CylinderMesh" id="CylinderMesh_wheel"]
 top_radius = 0.15
 bottom_radius = 0.15
 height = 0.1
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wheel"]
+albedo_color = Color(0.2, 0.2, 0.2, 1)
+metallic = 0.8
+roughness = 0.3
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_indicator"]
 albedo_color = Color(1, 0.2, 0.2, 1)
 emission_enabled = true
 emission = Color(1, 0.2, 0.2, 1)
 emission_energy_multiplier = 1.5
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_exhaust"]
+emission_shape = 1
+emission_sphere_radius = 0.1
+direction = Vector3(0, 1, 1)
+spread = 15.0
+initial_velocity_min = 0.2
+initial_velocity_max = 0.5
+gravity = Vector3(0, 0.5, 0)
+scale_min = 0.1
+scale_max = 0.3
+color = Color(0.74902, 0.74902, 0.74902, 0.501961)
+turbulence_enabled = true
+turbulence_noise_strength = 0.2
+turbulence_noise_scale = 1.0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_exhaust"]
+transparency = 1
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_color = Color(0.8, 0.8, 0.8, 0.5)
+billboard_mode = 3
+billboard_keep_scale = true
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="QuadMesh_exhaust"]
+material = SubResource("StandardMaterial3D_exhaust")
+size = Vector2(0.2, 0.2)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_car_hitbox"]
 size = Vector3(0.608398, 0.3, 0.920898)
@@ -51,21 +97,30 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0.1)
 mesh = SubResource("BoxMesh_car_cabin")
 surface_material_override/0 = SubResource("StandardMaterial3D_car_cabin")
 
+[node name="TaxiSign" type="MeshInstance3D" parent="CarModel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0.1)
+mesh = SubResource("BoxMesh_taxi_sign")
+surface_material_override/0 = SubResource("StandardMaterial3D_taxi_sign")
+
 [node name="WheelFrontLeft" type="MeshInstance3D" parent="CarModel"]
 transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -0.4, -0.05, -0.4)
 mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
 
 [node name="WheelFrontRight" type="MeshInstance3D" parent="CarModel"]
 transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 0.4, -0.05, -0.4)
 mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
 
 [node name="WheelBackLeft" type="MeshInstance3D" parent="CarModel"]
 transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, -0.4, -0.05, 0.4)
 mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
 
 [node name="WheelBackRight" type="MeshInstance3D" parent="CarModel"]
 transform = Transform3D(-4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0, 0, 1, 0.4, -0.05, 0.4)
 mesh = SubResource("CylinderMesh_wheel")
+surface_material_override/0 = SubResource("StandardMaterial3D_wheel")
 
 [node name="Headlights" type="Node3D" parent="CarModel"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.35148)
@@ -86,7 +141,6 @@ spot_angle = 25.0
 
 [node name="DirectionIndicator" type="CSGCylinder3D" parent="CarModel"]
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0.0034513, -0.7)
-visible = false
 radius = 0.05
 height = 0.2
 material = SubResource("StandardMaterial3D_indicator")
@@ -95,6 +149,14 @@ material = SubResource("StandardMaterial3D_indicator")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.109427, 0)
 radius = 0.08
 material = SubResource("StandardMaterial3D_indicator")
+
+[node name="ExhaustParticles" type="GPUParticles3D" parent="CarModel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.6)
+amount = 16
+lifetime = 1.5
+randomness = 0.2
+process_material = SubResource("ParticleProcessMaterial_exhaust")
+draw_pass_1 = SubResource("QuadMesh_exhaust")
 
 [node name="CarPhysicsBody" type="AnimatableBody3D" parent="."]
 collision_layer = 4

@@ -63,6 +63,7 @@ script = ExtResource("3_qfnpw")
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.305695, 0.952129, 0, -0.952129, 0.305695, 0, 9, 4)
 current = true
+fov = 53.6343
 script = SubResource("GDScript_0lp6b")
 
 [node name="CodeEditorImproved" parent="." instance=ExtResource("6_ndsxb")]

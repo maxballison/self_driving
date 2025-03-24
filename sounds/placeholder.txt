@@ -1,0 +1,8 @@
+Place sound files here with these names:
+drive.wav - Sound for car driving
+turn.wav - Sound for car turning
+pickup.wav - Sound for picking up passengers
+delivery.wav - Sound for delivering passengers
+error.wav - Sound for error actions
+success.wav - Sound for level completion
+crash.wav - Sound for passenger collision

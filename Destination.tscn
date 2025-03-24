@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://c2dqc3xoqapu4"]
+[gd_scene load_steps=16 format=3 uid="uid://c2dqc3xoqapu4"]
 
 [ext_resource type="Script" path="res://scripts/Destination.gd" id="1_d8qwv"]
 [ext_resource type="PackedScene" uid="uid://x5qxel6t55b7" path="res://tiles/TileEmpty.tscn" id="2_mf2ow"]
@@ -11,6 +11,21 @@ height = 0.1
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_platform"]
 albedo_color = Color(0.2, 0.2, 0.2, 1)
 
+[sub_resource type="CylinderMesh" id="CylinderMesh_pole"]
+top_radius = 0.03
+bottom_radius = 0.03
+height = 1.5
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pole"]
+albedo_color = Color(0.4, 0.4, 0.4, 1)
+metallic = 0.8
+roughness = 0.2
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_flag"]
+size = Vector2(0.7, 0.5)
+subdivide_width = 5
+subdivide_depth = 2
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_indicator"]
 albedo_color = Color(1, 0, 0, 1)
 emission_enabled = true
@@ -21,18 +36,161 @@ emission_energy_multiplier = 1.2
 height = 0.5
 radius = 0.8
 
+[sub_resource type="Animation" id="Animation_idle"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("DestinationModel/Flag:surface_material_override/0:uv1_offset")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, 0, 0)]
+}
+tracks/1/type = "bezier"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("DestinationModel/Flag:rotation:z")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"handle_modes": PackedInt32Array(0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0)
+}
+
+[sub_resource type="Animation" id="Animation_wave"]
+resource_name = "flag_wave"
+length = 3.0
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("DestinationModel/Flag:surface_material_override/0:uv1_offset")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 1.5, 3),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0.1, 0), Vector3(0, 0, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("DestinationModel/Flag:mesh:subdivide_width")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [5]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("DestinationModel/Flag:mesh:subdivide_depth")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [2]
+}
+tracks/3/type = "bezier"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("DestinationModel/Flag:rotation:z")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"handle_modes": PackedInt32Array(0, 0, 0),
+"points": PackedFloat32Array(0, -0.25, 0, 0.25, 0, 0.1, -0.25, 0, 0.25, 0, 0, -0.25, 0, 0.25, 0),
+"times": PackedFloat32Array(0, 1.5, 3)
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_wave"]
+_data = {
+"RESET": SubResource("Animation_idle"),
+"flag_wave": SubResource("Animation_wave")
+}
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_sparkle"]
+emission_shape = 3
+emission_box_extents = Vector3(0.35, 0.1, 0.25)
+angle_min = -180.0
+angle_max = 180.0
+direction = Vector3(0, 1, 0)
+spread = 20.0
+flatness = 0.2
+initial_velocity_min = 1.5
+initial_velocity_max = 3.0
+angular_velocity_min = -40.0
+angular_velocity_max = 40.0
+gravity = Vector3(0, 0.3, 0)
+linear_accel_min = 0.1
+linear_accel_max = 0.5
+radial_accel_min = 0.1
+radial_accel_max = 0.5
+damping_min = 0.1
+damping_max = 0.3
+scale_min = 0.05
+scale_max = 0.15
+color = Color(1, 0.8, 0.2, 1)
+hue_variation_min = -0.05
+hue_variation_max = 0.05
+turbulence_enabled = true
+turbulence_noise_strength = 0.3
+turbulence_noise_scale = 2.0
+turbulence_noise_speed_random = 0.1
+turbulence_influence_max = 0.4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gold"]
+transparency = 1
+blend_mode = 1
+cull_mode = 2
+shading_mode = 0
+vertex_color_use_as_albedo = true
+albedo_color = Color(1, 0.8, 0.2, 0.8)
+billboard_mode = 3
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="QuadMesh_star"]
+material = SubResource("StandardMaterial3D_gold")
+size = Vector2(0.1, 0.1)
+
 [node name="Destination" type="Node3D"]
 script = ExtResource("1_d8qwv")
 
 [node name="DestinationModel" type="Node3D" parent="."]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 0, 0)
 
 [node name="Platform" type="MeshInstance3D" parent="DestinationModel"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
 mesh = SubResource("CylinderMesh_platform")
 surface_material_override/0 = SubResource("StandardMaterial3D_platform")
 
+[node name="Pole" type="MeshInstance3D" parent="DestinationModel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("CylinderMesh_pole")
+surface_material_override/0 = SubResource("StandardMaterial3D_pole")
+
+[node name="Flag" type="MeshInstance3D" parent="DestinationModel"]
+transform = Transform3D(-4.37114e-08, -1, 4.37114e-08, 0, -4.37114e-08, -1, 1, -4.37114e-08, 1.91069e-15, 0.03, 1.2, 0.35)
+mesh = SubResource("PlaneMesh_flag")
+skeleton = NodePath("../Pole")
+surface_material_override/0 = SubResource("StandardMaterial3D_indicator")
+
 [node name="ColorIndicator" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+visible = false
 mesh = SubResource("CylinderMesh_platform")
 surface_material_override/0 = SubResource("StandardMaterial3D_indicator")
 
@@ -42,4 +200,25 @@ surface_material_override/0 = SubResource("StandardMaterial3D_indicator")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
 shape = SubResource("CylinderShape3D_area")
 
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+"": SubResource("AnimationLibrary_wave")
+}
+autoplay = "flag_wave"
+
+[node name="SuccessParticles" type="GPUParticles3D" parent="."]
+emitting = false
+amount = 80
+lifetime = 3.0
+explosiveness = 0.1
+randomness = 0.3
+process_material = SubResource("ParticleProcessMaterial_sparkle")
+draw_pass_1 = SubResource("QuadMesh_star")
+
 [node name="Tile" parent="." instance=ExtResource("2_mf2ow")]
+
+[node name="OmniLight3D" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+light_color = Color(1, 0, 0, 1)
+omni_range = 1.0
+omni_attenuation = 1.2

@@ -7,34 +7,35 @@ static func create_theme() -> Theme:
 	
 	# Panel styles
 	var panel_style = StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.15, 0.15, 0.18)
+	panel_style.bg_color = Color(0.15, 0.16, 0.20)
 	panel_style.border_width_left = 1
 	panel_style.border_width_top = 1
 	panel_style.border_width_right = 1
 	panel_style.border_width_bottom = 1
 	panel_style.border_color = Color(0.3, 0.3, 0.35)
-	panel_style.corner_radius_top_left = 5
-	panel_style.corner_radius_top_right = 5
-	panel_style.corner_radius_bottom_right = 5
-	panel_style.corner_radius_bottom_left = 5
-	panel_style.shadow_color = Color(0, 0, 0, 0.3)
-	panel_style.shadow_size = 5
+	panel_style.corner_radius_top_left = 8
+	panel_style.corner_radius_top_right = 8
+	panel_style.corner_radius_bottom_right = 8
+	panel_style.corner_radius_bottom_left = 8
+	panel_style.shadow_color = Color(0, 0, 0, 0.5)
+	panel_style.shadow_size = 8
+	panel_style.shadow_offset = Vector2(0, 3)
 	theme.set_stylebox("panel", "Panel", panel_style)
 	
 	# Title bar style
 	var title_style = StyleBoxFlat.new()
-	title_style.bg_color = Color(0.2, 0.2, 0.25)
+	title_style.bg_color = Color(0.18, 0.19, 0.24)
 	title_style.border_width_left = 1
 	title_style.border_width_top = 1
 	title_style.border_width_right = 1
 	title_style.border_color = Color(0.3, 0.3, 0.35)
-	title_style.corner_radius_top_left = 5
-	title_style.corner_radius_top_right = 5
+	title_style.corner_radius_top_left = 8
+	title_style.corner_radius_top_right = 8
 	theme.set_stylebox("titlebar", "Panel", title_style)
 	
 	# Editor container style
 	var editor_style = StyleBoxFlat.new()
-	editor_style.bg_color = Color(0.12, 0.12, 0.15)
+	editor_style.bg_color = Color(0.12, 0.13, 0.16)
 	editor_style.border_width_left = 1
 	editor_style.border_width_top = 1
 	editor_style.border_width_right = 1
@@ -50,10 +51,10 @@ static func create_theme() -> Theme:
 	button_normal.border_width_right = 1
 	button_normal.border_width_bottom = 1
 	button_normal.border_color = Color(0.35, 0.35, 0.4)
-	button_normal.corner_radius_top_left = 3
-	button_normal.corner_radius_top_right = 3
-	button_normal.corner_radius_bottom_right = 3
-	button_normal.corner_radius_bottom_left = 3
+	button_normal.corner_radius_top_left = 6
+	button_normal.corner_radius_top_right = 6
+	button_normal.corner_radius_bottom_right = 6
+	button_normal.corner_radius_bottom_left = 6
 	theme.set_stylebox("normal", "Button", button_normal)
 	
 	# Button hover
@@ -74,14 +75,14 @@ static func create_theme() -> Theme:
 	
 	# Button panel
 	var button_panel = StyleBoxFlat.new()
-	button_panel.bg_color = Color(0.17, 0.17, 0.2)
+	button_panel.bg_color = Color(0.17, 0.18, 0.22)
 	button_panel.border_width_top = 1
 	button_panel.border_color = Color(0.25, 0.25, 0.3)
 	theme.set_stylebox("panel", "ButtonPanel", button_panel)
 	
 	# TextEdit style
 	var textedit_style = StyleBoxFlat.new()
-	textedit_style.bg_color = Color(0.12, 0.12, 0.15)
+	textedit_style.bg_color = Color(0.12, 0.13, 0.16)
 	textedit_style.border_width_left = 1
 	textedit_style.border_width_top = 1
 	textedit_style.border_width_right = 1
@@ -95,12 +96,12 @@ static func create_theme() -> Theme:
 	
 	# Line counter style
 	var line_counter_style = textedit_style.duplicate()
-	line_counter_style.bg_color = Color(0.14, 0.14, 0.17)
+	line_counter_style.bg_color = Color(0.14, 0.15, 0.18)
 	theme.set_stylebox("normal", "RichTextLabel", line_counter_style)
 	
 	# Set fonts
 	var font = SystemFont.new()
-	font.font_names = ["JetBrains Mono", "Consolas", "Courier New", "DejaVu Sans Mono"]
+	font.font_names = ["JetBrains Mono", "Fira Code", "Consolas", "Courier New", "DejaVu Sans Mono"]
 	font.antialiasing = TextServer.FONT_ANTIALIASING_LCD
 	
 	theme.set_font("font", "TextEdit", font)
@@ -114,16 +115,16 @@ static func create_theme() -> Theme:
 	theme.set_font_size("font_size", "Button", 25)
 	
 	# Set colors
-	theme.set_color("font_color", "TextEdit", Color(0.9, 0.9, 0.9))
-	theme.set_color("default_color", "RichTextLabel", Color(0.9, 0.9, 0.9))
-	theme.set_color("font_color", "Label", Color(0.9, 0.9, 0.9))
-	theme.set_color("font_color", "Button", Color(0.9, 0.9, 0.9))
+	theme.set_color("font_color", "TextEdit", Color(0.95, 0.95, 0.95))
+	theme.set_color("default_color", "RichTextLabel", Color(0.95, 0.95, 0.95))
+	theme.set_color("font_color", "Label", Color(0.95, 0.95, 0.95))
+	theme.set_color("font_color", "Button", Color(0.95, 0.95, 0.95))
 	theme.set_color("font_disabled_color", "Button", Color(0.5, 0.5, 0.5))
 	
 	# Cursor and selection colors
 	theme.set_color("caret_color", "TextEdit", Color(0.9, 0.9, 0.9))
 	theme.set_color("selection_color", "TextEdit", Color(0.3, 0.4, 0.6, 0.5))
-	theme.set_color("current_line_color", "TextEdit", Color(0.2, 0.2, 0.25))
+	theme.set_color("current_line_color", "TextEdit", Color(0.2, 0.21, 0.25))
 	
 	return theme
 
@@ -148,22 +149,22 @@ static func apply_theme(editor: Control) -> void:
 		var run_button = editor.get_node("ButtonPanel/RunButton")
 		
 		var run_normal = StyleBoxFlat.new()
-		run_normal.bg_color = Color(0.2, 0.5, 0.2)
+		run_normal.bg_color = Color(0.2, 0.6, 0.2)
 		run_normal.border_width_left = 1
 		run_normal.border_width_top = 1
 		run_normal.border_width_right = 1
 		run_normal.border_width_bottom = 1
-		run_normal.border_color = Color(0.3, 0.6, 0.3)
-		run_normal.corner_radius_top_left = 3
-		run_normal.corner_radius_top_right = 3
-		run_normal.corner_radius_bottom_right = 3
-		run_normal.corner_radius_bottom_left = 3
+		run_normal.border_color = Color(0.3, 0.7, 0.3)
+		run_normal.corner_radius_top_left = 6
+		run_normal.corner_radius_top_right = 6
+		run_normal.corner_radius_bottom_right = 6
+		run_normal.corner_radius_bottom_left = 6
 		
 		var run_hover = run_normal.duplicate()
-		run_hover.bg_color = Color(0.25, 0.6, 0.25)
+		run_hover.bg_color = Color(0.25, 0.7, 0.25)
 		
 		var run_pressed = run_normal.duplicate()
-		run_pressed.bg_color = Color(0.15, 0.4, 0.15)
+		run_pressed.bg_color = Color(0.15, 0.5, 0.15)
 		
 		run_button.add_theme_stylebox_override("normal", run_normal)
 		run_button.add_theme_stylebox_override("hover", run_hover)

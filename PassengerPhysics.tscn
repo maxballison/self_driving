@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://crnlf1pmydvva"]
+[gd_scene load_steps=15 format=3 uid="uid://crnlf1pmydvva"]
 
 [ext_resource type="Script" path="res://scripts/PassengerPhysics.gd" id="1_direct"]
 [ext_resource type="PackedScene" uid="uid://x5qxel6t55b7" path="res://tiles/TileEmpty.tscn" id="2_l8420"]
@@ -9,20 +9,25 @@ height = 0.3
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_head"]
 albedo_color = Color(0.85, 0.7, 0.6, 1)
+roughness = 0.7
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
 radius = 0.25
 height = 0.8
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_body"]
-albedo_color = Color(0.2, 0.3, 0.7, 1)
+albedo_color = Color(0.2, 0.4, 0.8, 1)
+metallic = 0.1
+roughness = 0.6
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_arm"]
 radius = 0.05
 height = 0.4
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_arm"]
-albedo_color = Color(0.2, 0.3, 0.7, 1)
+albedo_color = Color(0.2, 0.4, 0.8, 1)
+metallic = 0.1
+roughness = 0.6
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_leg"]
 radius = 0.06
@@ -30,6 +35,12 @@ height = 0.5
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_leg"]
 albedo_color = Color(0.2, 0.2, 0.4, 1)
+roughness = 0.7
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_suitcase"]
+top_radius = 0.1
+bottom_radius = 0.1
+height = 0.25
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.25
@@ -86,6 +97,11 @@ mesh = SubResource("CapsuleMesh_leg")
 skeleton = NodePath("../..")
 surface_material_override/0 = SubResource("StandardMaterial3D_leg")
 
+[node name="Suitcase" type="MeshInstance3D" parent="VisualModel"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0.3, 0.4, 0.15)
+mesh = SubResource("CylinderMesh_suitcase")
+skeleton = NodePath("../..")
+
 [node name="RagdollBody" type="RigidBody3D" parent="."]
 visible = false
 collision_layer = 2
@@ -133,6 +149,11 @@ mesh = SubResource("CapsuleMesh_leg")
 skeleton = NodePath("../../..")
 surface_material_override/0 = SubResource("StandardMaterial3D_leg")
 
+[node name="Suitcase" type="MeshInstance3D" parent="RagdollBody/RagdollMesh"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0.3, 0.4, 0.15)
+mesh = SubResource("CylinderMesh_suitcase")
+skeleton = NodePath("../../..")
+
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RagdollBody"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 shape = SubResource("CapsuleShape3D_body")
@@ -144,3 +165,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.64773, 0)
 cast_shadow = 0
 mesh = SubResource("SphereMesh_indicator")
 surface_material_override/0 = SubResource("StandardMaterial3D_indicator")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
