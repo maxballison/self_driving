@@ -7,7 +7,8 @@ class_name ImprovedCodeEditor
 @onready var close_button = $TitleBar/CloseButton
 @onready var text_edit = $EditorContainer/EditorBox/TextEdit
 @onready var run_button = $ButtonPanel/RunButton
-@onready var line_counter = $EditorContainer/EditorBox/LineCounter
+# LineCounter node doesn't exist in the scene - removing reference
+var line_counter = null
 @onready var resize_handle = $ResizeHandle
 
 # Line restriction settings
@@ -46,10 +47,7 @@ func _ready() -> void:
 	# Set window title
 	title_label.text = title
 	
-	# Connect signals
-	run_button.pressed.connect(_on_run_button_pressed)
-	close_button.pressed.connect(_on_close_button_pressed)
-	text_edit.text_changed.connect(_on_text_changed)
+	# Signals are already connected in the scene file, no need to connect them here
 	
 	# Configure TextEdit appearance
 	_configure_text_edit()
@@ -247,8 +245,5 @@ func _on_text_changed() -> void:
 		text_edit.set_caret_column(cursor_column)
 
 func _process(_delta: float) -> void:
-	# Keep line counter in sync with text edit scrolling
-	if text_edit.get_v_scroll_bar() and text_edit.get_v_scroll_bar().visible:
-		var scrollbar = text_edit.get_v_scroll_bar()
-		if line_counter.get_v_scroll_bar():
-			line_counter.get_v_scroll_bar().value = scrollbar.value
+	# Line counter synchronization removed since the LineCounter node doesn't exist
+	pass

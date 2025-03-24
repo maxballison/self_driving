@@ -71,12 +71,12 @@ func _setup_audio_players():
 	# Create audio players for each sound
 	for sound_name in sounds.keys():
 		if sounds[sound_name] != null:
-			var player = AudioStreamPlayer.new()
-			player.stream = sounds[sound_name]
-			player.volume_db = -10  # Default volume level
-			player.bus = "SFX" if AudioServer.get_bus_index("SFX") >= 0 else "Master"
-			add_child(player)
-			audio_players[sound_name] = player
+			var audio_player = AudioStreamPlayer.new()
+			audio_player.stream = sounds[sound_name]
+			audio_player.volume_db = -10  # Default volume level
+			audio_player.bus = "SFX" if AudioServer.get_bus_index("SFX") >= 0 else "Master"
+			add_child(audio_player)
+			audio_players[sound_name] = audio_player
 		else:
 			# Create dummy audio players to avoid errors
 			audio_players[sound_name] = null
@@ -89,10 +89,10 @@ func play_sound(sound_name: String, volume_db: float = -10, pitch_scale: float =
 		return
 	
 	if audio_players.has(sound_name) and audio_players[sound_name] != null:
-		var player = audio_players[sound_name]
-		player.volume_db = volume_db
-		player.pitch_scale = pitch_scale
-		player.play()
+		var audio_player = audio_players[sound_name]
+		audio_player.volume_db = volume_db
+		audio_player.pitch_scale = pitch_scale
+		audio_player.play()
 		
 		# For certain sounds, add screen shake
 		if sound_name == "crash" or sound_name == "success":

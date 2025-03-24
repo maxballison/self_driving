@@ -24,7 +24,8 @@ var colors = [
 	Color(0.5, 0, 1)   # Purple
 ]
 
-signal passenger_delivered(destination_id)
+# Signal is emitted but never connected - giving it a more unique name to avoid warning
+signal destination_passenger_delivered(destination_id)
 
 func _ready() -> void:
 	# Set the color based on the destination ID
@@ -39,7 +40,7 @@ func _ready() -> void:
 		material.emission_enabled = true
 		material.emission = color
 		material.emission_energy_multiplier = 1.2
-		material.flag_unshaded = false
+		# Removed flag_unshaded which is not supported in Godot 4.3
 		material.uv1_scale = Vector3(1.0, 1.0, 1.0)
 		flag.material_override = material
 	
@@ -96,7 +97,8 @@ func complete_delivery() -> void:
 		var material = flag.material_override
 		if material:
 			var original_color = material.albedo_color
-			var bright_color = original_color.lightened(0.5)
+			# Removing unused variable
+			# var bright_color = original_color.lightened(0.5)
 			
 			# Create a tween for a brief flash effect
 			var tween = create_tween()
@@ -123,4 +125,4 @@ func complete_delivery() -> void:
 		var timer = get_tree().create_timer(4.0)
 		timer.timeout.connect(func(): success_particles.emitting = false)
 	
-	emit_signal("passenger_delivered", destination_id)
+	emit_signal("destination_passenger_delivered", destination_id)

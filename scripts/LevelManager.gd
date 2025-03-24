@@ -8,7 +8,7 @@ var cell_size: float = 1.0
 signal level_switched()
 
 func _ready() -> void:
-	load_level("res://GeneratedLevels/level_5.tscn")
+	load_level("res://GeneratedLevels/level_4.tscn")
 
 func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1)) -> void:
 	print("Loading level: ", scene_path)
@@ -141,13 +141,13 @@ func _on_player_door_entered(next_level_path: String, _unused_spawn: Vector2i) -
 	# We're ignoring the next_level_spawn parameter (keeping it for backward compatibility)
 	load_level(next_level_path)
 
-func _on_passenger_hit(passenger) -> void:
+func _on_passenger_hit(_passenger) -> void:
 	print("Passenger hit by car, restarting level after delay...")
 	# This function is now primarily for signal response logging
 	# The actual reset is handled by schedule_level_reset
 
 # This is the primary way to reset the level, called from multiple places
-func schedule_level_reset(passenger = null) -> void:
+func schedule_level_reset(_passenger = null) -> void:
 	print("Level reset scheduled after passenger hit!")
 	
 	# Check if a reset is already scheduled (to prevent multiple resets)

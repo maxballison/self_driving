@@ -15,7 +15,8 @@ var current_passengers: Array = []  # Array of Passenger objects
 var max_passengers: int = 3  # Maximum number of passengers the car can hold
 var nearby_passengers: Array = []  # Track passengers within pickup range
 
-# Signals
+# Signals - these are connected externally in _connect_player_signals() in LevelManager.gd
+# but we won't rename them to maintain compatibility
 signal door_entered(next_level_path: String, next_level_spawn: Vector2i)
 signal passenger_hit(passenger)
 signal passenger_picked_up(passenger)

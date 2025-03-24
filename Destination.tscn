@@ -209,7 +209,7 @@ autoplay = "flag_wave"
 [node name="SuccessParticles" type="GPUParticles3D" parent="."]
 emitting = false
 amount = 80
-lifetime = 3.0
+lifetime = 1.4
 explosiveness = 0.1
 randomness = 0.3
 process_material = SubResource("ParticleProcessMaterial_sparkle")

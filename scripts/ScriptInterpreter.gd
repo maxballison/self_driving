@@ -651,10 +651,10 @@ func _extract_function_params(func_line: String) -> Array:
 	return params
 
 
-func _on_player_door_entered(next_level_path: String, next_level_spawn: Vector2i) -> void:
+func _on_player_door_entered(_next_level_path: String, _next_level_spawn: Vector2i) -> void:
 	is_running = false
 	
-func _on_passenger_hit(passenger) -> void:
+func _on_passenger_hit(_passenger) -> void:
 	# Stop code execution when a passenger is hit
 	print("ScriptInterpreter: Stopping execution due to passenger hit")
 	is_running = false

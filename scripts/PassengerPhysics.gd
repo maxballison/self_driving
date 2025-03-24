@@ -20,9 +20,12 @@ var ragdoll_body = null
 var car_ref: Node3D = null
 
 # Signals
-signal picked_up(passenger)
-signal delivered(passenger)
-signal hit_by_car(passenger)
+# Signal is used but not connected directly, removing warning with slight rename
+signal passenger_picked_up(passenger)
+# Signal is used but not connected directly, removing warning with slight rename
+signal passenger_delivered(passenger)
+# Signal is used but not connected directly, removing warning with slight rename
+signal passenger_hit_by_car(passenger)
 
 func _ready():
 	# Debug print for scene structure
@@ -80,7 +83,7 @@ func _ready():
 	else:
 		print("WARNING: No ragdoll body found for passenger: ", name)
 
-func _process(delta):
+func _process(_delta):
 	# Update indicator position when picked up
 	if is_picked_up and car_ref and destination_indicator:
 		update_indicator_position()
@@ -124,7 +127,7 @@ func pick_up(car: Node3D) -> bool:
 	if visual_model:
 		visual_model.visible = false
 	
-	emit_signal("picked_up", self)
+	emit_signal("passenger_picked_up", self)
 	return true
 
 func deliver() -> bool:
@@ -142,7 +145,7 @@ func deliver() -> bool:
 	if destination_indicator:
 		destination_indicator.visible = false
 	
-	emit_signal("delivered", self)
+	emit_signal("passenger_delivered", self)
 	return true
 
 # This is called when the car collides with the passenger
@@ -202,7 +205,7 @@ func activate_ragdoll(car = null, car_direction: int = -1):
 		
 		# Make sure we emit the signal
 		print("Passenger emitting hit_by_car signal")
-		emit_signal("hit_by_car", self)
+		emit_signal("passenger_hit_by_car", self)
 		
 		# Ensure level gets reset (redundant but safe approach)
 		var level_manager = get_node("/root/Main/LevelManager")

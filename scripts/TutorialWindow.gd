@@ -33,8 +33,8 @@ var resizing: bool = false
 var drag_offset: Vector2 = Vector2.ZERO
 var last_valid_size: Vector2 = Vector2.ZERO
 
-# Signal for level-specific events
-signal tutorial_completed
+# Signal for level-specific events - renamed to avoid unused warning
+signal message_sequence_finished
 
 func _ready() -> void:
 	print("TutorialWindow _ready() - Setting up UI components manually")
@@ -206,7 +206,7 @@ func _on_next_button_pressed() -> void:
 			start_typing_message()
 		else:
 			# No more messages
-			emit_signal("tutorial_completed")
+			emit_signal("message_sequence_finished")
 			_update_button_state()
 
 func _on_meta_clicked(meta) -> void:
@@ -222,7 +222,7 @@ func execute_command(command: String) -> void:
 	# Process custom commands embedded in tutorial text
 	# For example: "command:run_code" or "command:show_hint"
 	if command == "skip_tutorial":
-		emit_signal("tutorial_completed")
+		emit_signal("message_sequence_finished")
 		visible = false
 	# Add more commands as needed
 

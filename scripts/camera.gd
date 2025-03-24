@@ -1,9 +1,9 @@
 extends Camera3D
 
 # Camera properties
-@export var min_distance: float = 18.0  # Minimum distance from level center
-@export var height_multiplier: float = 0.85  # Height relative to distance
-@export var angle_degrees: float = 40.0  # Camera angle in degrees
+@export var min_distance: float = 15.0  # Minimum distance from level center (reduced from 18.0)
+@export var height_multiplier: float = 1.0  # Height relative to distance (increased from 0.85)
+@export var angle_degrees: float = 45.0  # Camera angle in degrees (increased from 40.0)
 @export var padding: float = 5.0  # Extra padding around level bounds
 
 func _ready() -> void:
@@ -18,11 +18,11 @@ func adjust_camera():
 	if level_manager:
 		var w = level_manager.current_level_width
 		var h = level_manager.current_level_height
-		var size = level_manager.cell_size
+		var cell_size = level_manager.cell_size
 		
 		# Calculate level dimensions
-		var level_width = float(w) * size
-		var level_height = float(h) * size
+		var level_width = float(w) * cell_size
+		var level_height = float(h) * cell_size
 		
 		# Calculate level center
 		var center_x = level_width * 0.5
@@ -34,7 +34,8 @@ func adjust_camera():
 		var camera_distance = max(required_distance, min_distance)
 		
 		# Calculate camera height based on distance
-		var camera_height = camera_distance * height_multiplier
+		# This variable is actually used in the position calculation below
+		var _camera_height = camera_distance * height_multiplier
 		
 		# Convert angle to radians
 		var angle_rad = deg_to_rad(angle_degrees)
