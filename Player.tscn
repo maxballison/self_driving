@@ -140,7 +140,7 @@ spot_range = 4.0
 spot_angle = 25.0
 
 [node name="DirectionIndicator" type="CSGCylinder3D" parent="CarModel"]
-transform = Transform3D(1, 0, 0, 0, -4.37114e-08, -1, 0, 1, -4.37114e-08, 0, 0.0034513, -0.7)
+transform = Transform3D(0.5, 0, 0, 0, -2.18557e-08, -0.5, 0, 0.5, -2.18557e-08, 0, 0.0034513, -0.7)
 radius = 0.05
 height = 0.2
 material = SubResource("StandardMaterial3D_indicator")
