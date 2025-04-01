@@ -43,6 +43,7 @@ func _ready() -> void:
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
 	
+	
 	# Connect pickup area signals
 	if pickup_area:
 		pickup_area.collision_mask = 2  # Layer 2 (passengers)
@@ -288,8 +289,15 @@ func _handle_fall() -> void:
 	print("Car fell off the edge, resetting level...")
 	
 	# Prevent multiple resets
+	if reset_in_progress:
+		return
+		
 	can_reset = false
 	reset_in_progress = true
+	
+	# Immediately halt all movement
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
 	
 	# Start the protection timer
 	reset_protection_timer.start()
@@ -298,15 +306,28 @@ func _handle_fall() -> void:
 	var level_manager = get_node("/root/Main/LevelManager")
 	if level_manager and level_manager.has_method("schedule_level_reset"):
 		level_manager.schedule_level_reset()
-		
-		# Position the car above ground temporarily to stop fall detection
-		global_position.y = 5.0  # Move car up out of falling threshold
-		linear_velocity = Vector3.ZERO  # Stop all movement
-		angular_velocity = Vector3.ZERO  # Stop all rotation
 
 func _on_reset_protection_timeout() -> void:
 	can_reset = true
 	reset_in_progress = false
+
+# Reset physics state completely
+func reset_physics_state() -> void:
+	# Reset all flags and states
+	is_driving = false
+	turn_in_progress = false
+	turn_queued = false
+	reset_in_progress = false
+	can_reset = true
+	
+	# Reset velocities
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
+	
+	# Update direction based on rotation (important after teleporting)
+	update_direction_from_rotation()
+	
+	print("Player physics state has been reset")
 
 func clear_passengers() -> void:
 	# Clean up any indicators for current passengers

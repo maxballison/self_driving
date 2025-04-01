@@ -184,17 +184,17 @@ wait_time = 0.5
 one_shot = true
 
 [node name="WheelRayFL" type="RayCast3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.1, -0.3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0.1, -0.4)
 debug_shape_custom_color = Color(0, 0.94902, 0, 1)
 
 [node name="WheelRayFR" type="RayCast3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0.1, -0.3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.1, -0.4)
 debug_shape_custom_color = Color(0, 0.94902, 0, 1)
 
 [node name="WheelRayBL" type="RayCast3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.1, 0.3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0.1, 0.4)
 debug_shape_custom_color = Color(0, 0.94902, 0, 1)
 
 [node name="WheelRayBR" type="RayCast3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0.1, 0.3)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.1, 0.4)
 debug_shape_custom_color = Color(0, 0.94902, 0, 1)
