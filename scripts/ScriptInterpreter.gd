@@ -104,6 +104,9 @@ func _run_interpreter(indent_level: int) -> void:
 			# Yield for run_delay seconds for move statements
 			var t = get_tree().create_timer(owner.run_delay)
 			await t.timeout
+		elif result == "WAIT":
+			# For wait() function - the function itself contains the await
+			pass
 		elif result == "ERROR":
 			push_error("Error in line: %s" % line)
 			return
@@ -144,6 +147,7 @@ func get_var(var_name: String) -> Variant:
 # ----------------------------------------------------------------------
 # Returns a string from _interpret_line:
 # "MOVE" => indicates we did a move statement (requires yield)
+# "WAIT" => indicates we did a wait statement (has its own await)
 # "NONE" => normal or control statement handled
 # "ERROR" => if there's an error
 # "RETURN" => if we're returning from a function
@@ -162,6 +166,18 @@ func _interpret_line(line: String, indent_level: int) -> String:
 		var ok = _interpret_drive_statement(line)
 		if ok:
 			return "MOVE"
+		else:
+			return "ERROR"
+	elif line.begins_with("stop("):
+		var ok = _interpret_stop_statement(line)
+		if ok:
+			return "NONE"
+		else:
+			return "ERROR"
+	elif line.begins_with("wait("):
+		var ok = await _interpret_wait_statement(line)
+		if ok:
+			return "WAIT"
 		else:
 			return "ERROR"
 	elif line.begins_with("turn_left("):
@@ -210,7 +226,56 @@ func _interpret_line(line: String, indent_level: int) -> String:
 		push_warning("Unrecognized statement: %s" % line)
 		return "NONE"
 
-# New function to interpret drop_off() statement
+# New function to interpret stop() statement
+func _interpret_stop_statement(line: String) -> bool:
+	var inside = _extract_between(line, "stop(", ")")
+	inside = inside.strip_edges()
+	
+	# Verify no arguments were passed
+	if inside.length() > 0:
+		push_error("stop() doesn't take any parameters.")
+		return false
+		
+	if player:
+		player.stop()
+		return true
+	else:
+		push_error("No player assigned to interpreter.")
+		return false
+
+# New function to interpret wait() statement
+func _interpret_wait_statement(line: String) -> bool:
+	var inside = _extract_between(line, "wait(", ")")
+	inside = inside.strip_edges()
+	
+	# Parse the wait time parameter
+	var wait_time = 0.0
+	if inside.is_valid_float():
+		wait_time = float(inside)
+	elif inside.is_valid_int():
+		wait_time = float(inside)
+	else:
+		# Try to evaluate as an expression
+		var value = _parse_value(inside)
+		if value is float or value is int:
+			wait_time = float(value)
+		else:
+			push_error("wait() requires a numeric parameter for seconds.")
+			return false
+	
+	if wait_time <= 0:
+		push_error("wait() requires a positive number of seconds.")
+		return false
+		
+	if player:
+		# Call the player's wait method which has an await inside
+		await player.wait(wait_time)
+		return true
+	else:
+		push_error("No player assigned to interpreter.")
+		return false
+
+# Function to interpret drop_off() statement
 func _interpret_drop_off_statement(line: String) -> bool:
 	# drop_off() takes no parameters
 	var inside = _extract_between(line, "drop_off(", ")")
@@ -222,7 +287,7 @@ func _interpret_drop_off_statement(line: String) -> bool:
 		return false
 		
 	if player:
-		return player.drop_off()  # Call the new drop_off function
+		return player.drop_off()  # Call the drop_off function
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
@@ -368,7 +433,6 @@ func _interpret_pick_up_statement(line: String) -> bool:
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
-
 
 func _interpret_var_declaration(line: String) -> bool:
 	# e.g., "var dir = \"East\""

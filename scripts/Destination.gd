@@ -11,6 +11,7 @@ class_name Destination
 @onready var animation_player = $AnimationPlayer
 @onready var success_particles = $SuccessParticles
 @onready var omni_light = $OmniLight3D
+@onready var delivery_area = $DeliveryArea
 
 var is_completed: bool = false
 var colors = [
@@ -24,10 +25,12 @@ var colors = [
 	Color(0.5, 0, 1)   # Purple
 ]
 
-# Signal is emitted but never connected - giving it a more unique name to avoid warning
 signal destination_passenger_delivered(destination_id)
 
 func _ready() -> void:
+	# Add to destinations group for tracking
+	add_to_group("destinations")
+	
 	# Set the color based on the destination ID
 	var color_index = destination_id % colors.size()
 	var color = colors[color_index]
@@ -40,7 +43,6 @@ func _ready() -> void:
 		material.emission_enabled = true
 		material.emission = color
 		material.emission_energy_multiplier = 1.2
-		# Removed flag_unshaded which is not supported in Godot 4.3
 		material.uv1_scale = Vector3(1.0, 1.0, 1.0)
 		flag.material_override = material
 	
@@ -58,6 +60,18 @@ func _ready() -> void:
 	# Start animation
 	if animation_player:
 		animation_player.play("flag_wave")
+	
+	# Connect delivery area signals for physics-based detection
+	if delivery_area:
+		if not delivery_area.is_connected("body_entered", Callable(self, "_on_delivery_area_body_entered")):
+			delivery_area.connect("body_entered", Callable(self, "_on_delivery_area_body_entered"))
+		
+		if not delivery_area.is_connected("body_exited", Callable(self, "_on_delivery_area_body_exited")):
+			delivery_area.connect("body_exited", Callable(self, "_on_delivery_area_body_exited"))
+
+# Helper function for identifying destination in collision detection
+func is_destination() -> bool:
+	return true
 
 func setup_golden_particles() -> void:
 	if not success_particles:
@@ -81,6 +95,25 @@ func setup_golden_particles() -> void:
 			material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 			success_particles.draw_pass_1.material = material
 
+func _on_delivery_area_body_entered(body: Node) -> void:
+	# Detect when a car enters the delivery area
+	if body is Node3D and body.get_parent() and body.get_parent().has_method("drive"):
+		var car = body.get_parent()
+		
+		# Add this destination to the car's nearby destinations
+		if car.has_method("_on_pickup_area_body_entered"):
+			# Pass this node as parent to the car
+			car._on_pickup_area_body_entered(self)
+
+func _on_delivery_area_body_exited(body: Node) -> void:
+	# Detect when a car leaves the delivery area
+	if body is Node3D and body.get_parent() and body.get_parent().has_method("drive"):
+		var car = body.get_parent()
+		
+		# Remove this destination from the car's nearby destinations
+		if car.has_method("_on_pickup_area_body_exited"):
+			car._on_pickup_area_body_exited(self)
+
 func complete_delivery() -> void:
 	if is_completed:
 		return
@@ -97,8 +130,6 @@ func complete_delivery() -> void:
 		var material = flag.material_override
 		if material:
 			var original_color = material.albedo_color
-			# Removing unused variable
-			# var bright_color = original_color.lightened(0.5)
 			
 			# Create a tween for a brief flash effect
 			var tween = create_tween()

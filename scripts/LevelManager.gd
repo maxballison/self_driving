@@ -33,7 +33,7 @@ func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1))
 	current_level_instance = scene_res.instantiate()
 	add_child(current_level_instance)
 
-	# Read the level's properties
+	# Read the level's properties for level boundaries
 	if current_level_instance.get("grid_width"):
 		current_level_width = current_level_instance.grid_width
 		current_level_height = current_level_instance.grid_height
@@ -53,69 +53,62 @@ func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1))
 	if current_level_instance.get("start_direction"):
 		level_start_dir = current_level_instance.start_direction
 
-	# If the scene has tile_data and door_map, we can pass them to the player
-	var tile_data_array: Array = []
-	var door_map: Dictionary = {}
-	var passenger_map: Dictionary = {}
-	var destination_map: Dictionary = {}
-	
-	# Initialize and populate data from level
-	if current_level_instance.has_method("populate_tile_data_and_entities"):
-		current_level_instance.populate_tile_data_and_entities()
-	
-	if current_level_instance.get("tile_data"):
-		tile_data_array = current_level_instance.tile_data
-	if current_level_instance.get("door_map"):
-		door_map = current_level_instance.door_map
-	if current_level_instance.get("passenger_map"):
-		passenger_map = current_level_instance.passenger_map
-	if current_level_instance.get("destination_map"):
-		destination_map = current_level_instance.destination_map
-		
-	# Reset passenger states
-	for pos in passenger_map:
-		var passenger = passenger_map[pos]
+	# Reset passenger states (now done differently due to physics-based system)
+	var passengers = get_tree().get_nodes_in_group("passengers")
+	for passenger in passengers:
 		if passenger.has_method("reset_state"):
 			passenger.reset_state()
 
-	# Now set up the Player
+	# Set up the Player with the new physics-based approach
 	var player = get_node("/root/Main/Player")
 	if player:
-		# Use provided spawn_position if set, otherwise use level's start_position
+		# Calculate world position from grid position
+		var world_position = Vector3(
+			float(level_start_pos.x) * cell_size,
+			0.2,  # Height offset for the car
+			float(level_start_pos.y) * cell_size
+		)
+		
+		# If spawn_position was provided, use it instead
 		if spawn_position.x >= 0 and spawn_position.y >= 0:
-			player.grid_position = spawn_position
-		else:
-			player.grid_position = level_start_pos
+			world_position = Vector3(
+				float(spawn_position.x) * cell_size,
+				0.2,
+				float(spawn_position.y) * cell_size
+			)
 		
-		# Set player direction to level's start_direction
-		player.current_direction = level_start_dir
+		# Set player position and rotation directly
+		player.position = world_position
 		
-		player.grid_width = current_level_width
-		player.grid_height = current_level_height
-		player.cell_size = cell_size
-		player.tile_data = tile_data_array
-		player.door_map = door_map
-		player.passenger_map = passenger_map
-		player.destination_map = destination_map
+		# Calculate rotation from direction
+		var rotation_y = 0.0
+		match level_start_dir:
+			0: rotation_y = 0.0        # North
+			1: rotation_y = -PI * 0.5  # East
+			2: rotation_y = -PI        # South
+			3: rotation_y = -PI * 1.5  # West
+		
+		player.rotation.y = rotation_y
+		
+		# Ensure direction vector is updated from rotation
+		if player.has_method("update_direction_from_rotation"):
+			player.update_direction_from_rotation()
 		
 		# Clear any existing passengers in car
 		if player.has_method("clear_passengers"):
 			player.clear_passengers()
-		player.should_teleport = true
-		player.update_world_position()
+		
+		# Stop any ongoing movement
+		if player.has_method("stop"):
+			player.stop()
 		
 		# Connect signals if not already connected
 		_connect_player_signals(player)
-		
-		# Call refresh_nearby_passengers after everything is set up
-		player.refresh_nearby_passengers()
 	
-	# For debugging, print the maps
-	print("Level loaded with:")
-	print("- Tiles: ", tile_data_array.size(), " rows")
-	print("- Doors: ", door_map.size())
-	print("- Passengers: ", passenger_map.size())
-	print("- Destinations: ", destination_map.size())
+	# Print debug info
+	print("Level loaded: ", scene_path)
+	print("Level dimensions: ", current_level_width, "x", current_level_height)
+	print("Start position: ", level_start_pos)
 	
 	emit_signal("level_switched")
 
@@ -138,7 +131,6 @@ func _connect_player_signals(player: Node3D) -> void:
 func _on_player_door_entered(next_level_path: String, _unused_spawn: Vector2i) -> void:
 	print("Door entered, switching to level: ", next_level_path)
 	# Switch to the next level, using its own start position
-	# We're ignoring the next_level_spawn parameter (keeping it for backward compatibility)
 	load_level(next_level_path)
 
 func _on_passenger_hit(_passenger) -> void:
@@ -148,7 +140,7 @@ func _on_passenger_hit(_passenger) -> void:
 
 # This is the primary way to reset the level, called from multiple places
 func schedule_level_reset(_passenger = null) -> void:
-	print("Level reset scheduled after passenger hit!")
+	print("Level reset scheduled!")
 	
 	# Check if a reset is already scheduled (to prevent multiple resets)
 	if has_meta("reset_scheduled"):
@@ -162,6 +154,11 @@ func schedule_level_reset(_passenger = null) -> void:
 	var interpreter = get_node("/root/Main/ScriptInterpreter")
 	if interpreter:
 		interpreter.is_running = false
+	
+	# Stop the player's movement
+	var player = get_node("/root/Main/Player")
+	if player and player.has_method("stop"):
+		player.stop()
 	
 	# Clean up any orphaned indicators immediately
 	for child in get_tree().root.get_children():
@@ -179,23 +176,25 @@ func schedule_level_reset(_passenger = null) -> void:
 		if current_level_instance:
 			var current_path = current_level_instance.scene_file_path
 			print("Reloading level: ", current_path)
-			# Use a negative spawn position to indicate we should use the level's start position
 			load_level(current_path)
 	)
 
 func _on_level_completed() -> void:
 	print("Level completed signal received!")
-	# You can add special handling for level completion here
 	
 	# Get next level information from the level itself
 	if current_level_instance:
-		var next_level = current_level_instance.next_level_path
+		var next_level = ""
 		
-		# If next_level_path is empty, try to find it from a door
-		if next_level == "":
-			# Find a door to use for next level info as a fallback
-			for door_pos in current_level_instance.door_map:
-				var door = current_level_instance.door_map[door_pos]
+		# Get next level path if it exists
+		if current_level_instance.has_method("get") and current_level_instance.get("next_level_path") != "":
+			next_level = current_level_instance.next_level_path
+		
+		# If next_level_path is still empty, try to find it from a door
+		if next_level == "" and current_level_instance.has_method("get") and current_level_instance.get("door_map"):
+			var door_map = current_level_instance.door_map
+			for door_pos in door_map:
+				var door = door_map[door_pos]
 				if door.has_method("get"):
 					next_level = door.get("next_level_path")
 					break
@@ -204,11 +203,10 @@ func _on_level_completed() -> void:
 		if next_level != "":
 			print("Transitioning to next level after delay: ", next_level)
 			
-			# Create a transition effect (e.g., fade or message)
-			# For simplicity, we'll just use a timer
-			var transition_delay = current_level_instance.transition_delay
-			if transition_delay <= 0:
-				transition_delay = 2.0 # Default delay
+			# Get transition delay if available
+			var transition_delay = 2.0  # Default delay
+			if current_level_instance.has_method("get") and current_level_instance.get("transition_delay") > 0:
+				transition_delay = current_level_instance.transition_delay
 				
 			var timer = get_tree().create_timer(transition_delay)
 			timer.timeout.connect(func():

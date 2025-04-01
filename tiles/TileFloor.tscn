@@ -3,8 +3,9 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(1, 0.1, 1)
 
-[node name="TileFloor" type="StaticBody3D"]
-collision_mask = 3
+[node name="TileFloor" type="StaticBody3D" groups=["floor", "road"]]
+collision_layer = 1
+collision_mask = 7
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)

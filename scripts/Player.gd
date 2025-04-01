@@ -1,426 +1,368 @@
 extends Node3D
 
-# Grid positions and level data
-var grid_position: Vector2i = Vector2i(0, 0)
-var grid_width: int
-var grid_height: int
-var cell_size: float
-var tile_data: Array = []  # 2D array of blueprint chars
-var door_map: Dictionary = {}  # (x,y) -> door node
+# Physics-based movement variables
+var is_driving: bool = false
+var move_speed: float = 5.0  # Units per second
+var is_turning: bool = false
+var gravity_scale: float = 0.5  # Reduced gravity for floatier feel
 
-# New passenger tracking
-var passenger_map: Dictionary = {}  # (x,y) -> passenger node
-var destination_map: Dictionary = {}  # (x,y) -> destination node
-var current_passengers: Array = []  # Array of Passenger objects
-var max_passengers: int = 3  # Maximum number of passengers the car can hold
-var nearby_passengers: Array = []  # Track passengers within pickup range
+# Direction vector (normalized)
+var current_direction_vec: Vector3 = Vector3(1, 0, 0)  # Default: facing East
 
-# Signals - these are connected externally in _connect_player_signals() in LevelManager.gd
-# but we won't rename them to maintain compatibility
+# Fall detection
+var fall_threshold: float = -10.0  # Y position below which the car is considered fallen
+var initial_y_position: float = 0.2 
+var is_falling: bool = false
+var last_on_floor: float = 0.0  # Time when last on floor
+
+# Passenger tracking
+var current_passengers: Array = []
+var max_passengers: int = 3
+var nearby_passengers: Array = []
+var nearby_destinations: Array = []
+
+# Track collision with walls
+var wall_collision: bool = false
+
+# Physics car body and components
+@onready var car_physics = $CarPhysicsBody
+@onready var pickup_area = $PassengerPickupArea
+
+# Signals - keeping compatibility with existing connections
 signal door_entered(next_level_path: String, next_level_spawn: Vector2i)
 signal passenger_hit(passenger)
 signal passenger_picked_up(passenger)
 signal passenger_delivered(passenger, destination)
 signal level_completed()
 
-# Direction enum (clockwise order)
-enum Direction { NORTH = 0, EAST = 1, SOUTH = 2, WEST = 3 }
-var current_direction: int = Direction.EAST  # Default: car starts facing north
-
-# Variables for smooth movement animation
-var is_moving: bool = false
-var is_turning: bool = false
-var move_start: Vector3         # starting position before move
-var move_target: Vector3        # target position after move
-var rotation_start: float       # starting rotation before turn
-var rotation_target: float      # target rotation after turn
-var animation_time: float = 0.0 # elapsed time since animation started
-var should_teleport: bool = true  # Flag for instant teleportation
-
-# Physics car body
-@onready var car_physics = $CarPhysicsBody
-@onready var pickup_area = $PassengerPickupArea
-
 func _ready() -> void:
-	# Set collision layer for car physics
-	if car_physics:
-		car_physics.collision_layer = 4  # Layer 3
-		car_physics.collision_mask = 2   # Layer 2 (passengers)
-	
-	# Connect passenger pickup area signals
-	if pickup_area:
-		# Make sure the pickup area can detect passenger collisions
-		pickup_area.collision_mask = 2  # Layer 2 (passengers)
-		pickup_area.monitoring = true
-		
-		# Connect the body_entered signal to detect collisions
-		if not pickup_area.is_connected("body_entered", Callable(self, "_on_pickup_area_body_entered")):
-			pickup_area.connect("body_entered", Callable(self, "_on_pickup_area_body_entered"))
-	
-	update_world_position()
-	update_model_rotation()
-	clear_passengers()
-	
-	refresh_nearby_passengers()
+    # Set up the car physics body
+    # We'll check if it's a RigidBody3D, if not, we need to modify the scene structure
+    if car_physics and car_physics is RigidBody3D:
+        # Set up RigidBody properties
+        car_physics.gravity_scale = gravity_scale
+        car_physics.collision_layer = 4  # Layer 3
+        car_physics.collision_mask = 3   # Layers 1+2 (walls + passengers)
+        car_physics.freeze = true  # Start frozen until we intentionally move
+    else:
+        print("WARNING: CarPhysicsBody should be a RigidBody3D")
+    
+    # Connect passenger pickup area signals
+    if pickup_area:
+        pickup_area.collision_mask = 2  # Layer 2 (passengers)
+        pickup_area.monitoring = true
+        
+        # Connect signals for detecting entities
+        if not pickup_area.is_connected("body_entered", Callable(self, "_on_pickup_area_body_entered")):
+            pickup_area.connect("body_entered", Callable(self, "_on_pickup_area_body_entered"))
+        
+        if not pickup_area.is_connected("body_exited", Callable(self, "_on_pickup_area_body_exited")):
+            pickup_area.connect("body_exited", Callable(self, "_on_pickup_area_body_exited"))
+    
+    # Initial position
+    initial_y_position = position.y
+    last_on_floor = Time.get_ticks_msec() / 1000.0
+    
+    # Set initial direction vector based on rotation
+    update_direction_from_rotation()
+    
+    clear_passengers()
+
+func _physics_process(delta: float) -> void:
+    # Check if the car physics exists and is a RigidBody3D
+    if car_physics and car_physics is RigidBody3D:
+        # Check if there's a floor/road tile below us
+        var ray_start = global_position
+        var ray_end = ray_start + Vector3(0, -0.5, 0)  # Cast 0.5 unit down
+        
+        var space_state = get_world_3d().direct_space_state
+        var query = PhysicsRayQueryParameters3D.create(ray_start, ray_end)
+        query.collision_mask = 1  # Layer 1 (environment)
+        
+        var result = space_state.intersect_ray(query)
+        
+        # Floor detection
+        if not result.is_empty():
+            # We're on a floor
+            if is_falling:
+                is_falling = false
+                # If we were falling but found ground again, apply slight damping to movement
+                if car_physics.linear_velocity.length() > 0.5:
+                    car_physics.linear_velocity *= 0.9
+            
+            last_on_floor = Time.get_ticks_msec() / 1000.0
+            
+            # If we're driving and on a floor, maintain controlled movement
+            if is_driving and not wall_collision and not is_turning:
+                # Use physics for movement - apply a force instead of direct position manipulation
+                car_physics.freeze = false
+                car_physics.linear_velocity = current_direction_vec * move_speed
+            elif not is_driving and not is_turning:
+                # When not driving, apply damping to gradually stop
+                if car_physics.linear_velocity.length() > 0.1:
+                    car_physics.linear_velocity *= 0.9
+                else:
+                    car_physics.linear_velocity = Vector3.ZERO
+                    if not is_falling:
+                        car_physics.freeze = true
+        else:
+            # No floor detected, start falling with physics
+            var current_time = Time.get_ticks_msec() / 1000.0
+            if (current_time - last_on_floor) > 0.1:  # Small delay to prevent instant falling
+                is_falling = true
+                car_physics.freeze = false
+                
+                # Let gravity do its work
+                # Apply a slight forward momentum when falling off an edge
+                if is_driving:
+                    car_physics.linear_velocity = current_direction_vec * move_speed * 0.5
+    
+    # Check for falling off the edge
+    if position.y < fall_threshold:
+        _handle_fall()
+    
+    # Reset wall collision flag for next frame
+    wall_collision = false
+    
+    # Update position to match physics body
+    if car_physics and car_physics is RigidBody3D:
+        position = car_physics.position
+
+func update_direction_from_rotation() -> void:
+    # Calculate direction vector from rotation with correct Godot coordinate system
+    # Forward (NORTH) is -Z, Right (EAST) is +X, etc.
+    current_direction_vec = Vector3(0, 0, -1).rotated(Vector3.UP, rotation.y).normalized()
+    print("Direction updated: ", current_direction_vec)
+    
+    # Update physics body rotation if it exists
+    if car_physics:
+        car_physics.rotation = rotation
+
+# COMMAND FUNCTIONS
+
+func drive() -> void:
+    is_driving = true
+    if car_physics and car_physics is RigidBody3D:
+        car_physics.freeze = false
+    print("Car started driving continuously")
+
+func stop() -> void:
+    is_driving = false
+    # Don't freeze immediately, let physics slow it down naturally
+    print("Car stopped")
+
+func turn_left() -> void:
+    if is_turning:
+        return
+        
+    is_turning = true
+    
+    # Stop current movement during turn
+    var prev_driving = is_driving
+    is_driving = false
+    
+    # Turn exactly 90 degrees counter-clockwise (PI/2 radians)
+    var target_rotation = rotation.y + PI/2
+    var tween = create_tween()
+    tween.tween_property(self, "rotation:y", target_rotation, 0.5)
+    tween.tween_callback(func():
+        is_turning = false
+        update_direction_from_rotation()
+        
+        # Resume driving if we were driving before
+        is_driving = prev_driving
+    )
+    
+    print("Turning left by 90 degrees")
+
+func turn_right() -> void:
+    if is_turning:
+        return
+        
+    is_turning = true
+    
+    # Stop current movement during turn
+    var prev_driving = is_driving
+    is_driving = false
+    
+    # Turn exactly 90 degrees clockwise (-PI/2 radians)
+    var target_rotation = rotation.y - PI/2
+    var tween = create_tween()
+    tween.tween_property(self, "rotation:y", target_rotation, 0.5)
+    tween.tween_callback(func():
+        is_turning = false
+        update_direction_from_rotation()
+        
+        # Resume driving if we were driving before
+        is_driving = prev_driving
+    )
+    
+    print("Turning right by 90 degrees")
+
+func wait(seconds: float) -> void:
+    # Create a timer to pause execution
+    var prev_driving = is_driving
+    is_driving = false
+    print("Waiting for ", seconds, " seconds")
+    
+    var timer = get_tree().create_timer(seconds)
+    await timer.timeout
+    
+    # Resume previous state if we were driving
+    is_driving = prev_driving
+    print("Wait complete, driving state: ", is_driving)
+
+func pick_up() -> bool:
+    if current_passengers.size() >= max_passengers:
+        print("Car is full! Cannot pick up more passengers.")
+        return false
+    
+    # Try to pick up nearby passengers
+    if nearby_passengers.size() > 0:
+        for passenger in nearby_passengers:
+            if not passenger.is_picked_up and not passenger.is_delivered and not passenger.is_ragdolling:
+                if passenger.pick_up(self):
+                    current_passengers.append(passenger)
+                    print("Picked up passenger going to destination ", passenger.destination_id)
+                    emit_signal("passenger_picked_up", passenger)
+                    return true
+    
+    print("No passengers to pick up nearby!")
+    return false
+
+func drop_off() -> bool:
+    if current_passengers.size() == 0:
+        print("No passengers in car to drop off!")
+        return false
+    
+    # Check for nearby destinations
+    if nearby_destinations.size() > 0:
+        for destination in nearby_destinations:
+            # Find a passenger that matches this destination
+            for i in range(current_passengers.size()):
+                var passenger = current_passengers[i]
+                if passenger.destination_id == destination.destination_id:
+                    if passenger.deliver():
+                        # Remove from current passengers array
+                        current_passengers.remove_at(i)
+                        
+                        destination.complete_delivery()
+                        print("Dropped off passenger at destination ", passenger.destination_id)
+                        emit_signal("passenger_delivered", passenger, destination)
+                        
+                        # Check if all passengers have been delivered
+                        check_level_completion()
+                        return true
+    
+    print("No matching destination nearby for any passenger!")
+    return false
+
+# COLLISION HANDLING
+
+func _on_pickup_area_body_entered(body: Node) -> void:
+    print("Body entered pickup area: ", body.name)
+    
+    # Check if the body is a passenger's ragdoll
+    if body is RigidBody3D and body.get_parent() and body.get_parent().has_method("activate_ragdoll"):
+        var passenger = body.get_parent()
+        print("Passenger detected: ", passenger.name)
+        
+        # Only activate if the passenger is not already picked up or delivered
+        if not passenger.is_picked_up and not passenger.is_delivered and not passenger.is_ragdolling:
+            print("Activating passenger ragdoll")
+            passenger.activate_ragdoll(self, -1)  # -1 means use relative position for impulse
+            emit_signal("passenger_hit", passenger)
+            
+            # Directly call the level manager's reset function
+            var level_manager = get_node("/root/Main/LevelManager")
+            if level_manager and level_manager.has_method("schedule_level_reset"):
+                level_manager.schedule_level_reset(passenger)
+    elif body.get_parent() and body.get_parent().has_method("is_passenger"):
+        # If this is a passenger, add it to nearby passengers
+        nearby_passengers.append(body.get_parent())
+    elif body.get_parent() and body.get_parent().has_method("is_destination"):
+        # If this is a destination, add it to nearby destinations
+        nearby_destinations.append(body.get_parent())
+    elif body is StaticBody3D or "Wall" in body.name:
+        # Handle collision with walls
+        wall_collision = true
+        stop()
+        print("Wall collision detected, stopping car")
+    elif (body is StaticBody3D and "Floor" in body.name) or body.is_in_group("floor"):
+        # We're on a floor tile, reset falling state
+        is_falling = false
+        last_on_floor = Time.get_ticks_msec() / 1000.0
+
+func _on_pickup_area_body_exited(body: Node) -> void:
+    # Remove destinations/passengers from the nearby lists when they exit
+    if body.get_parent() and body.get_parent().has_method("is_passenger"):
+        var idx = nearby_passengers.find(body.get_parent())
+        if idx != -1:
+            nearby_passengers.remove_at(idx)
+    elif body.get_parent() and body.get_parent().has_method("is_destination"):
+        var idx = nearby_destinations.find(body.get_parent())
+        if idx != -1:
+            nearby_destinations.remove_at(idx)
+    elif (body is StaticBody3D and "Floor" in body.name) or body.is_in_group("floor"):
+        # We've left a floor tile - start a short timer before considering falling
+        var current_time = Time.get_ticks_msec() / 1000.0
+        last_on_floor = current_time  # We'll check against this time before enabling gravity
+
+# UTILITY FUNCTIONS
+
+func _handle_fall() -> void:
+    print("Car fell off the edge, resetting level...")
+    
+    var level_manager = get_node("/root/Main/LevelManager")
+    if level_manager and level_manager.has_method("schedule_level_reset"):
+        level_manager.schedule_level_reset()
 
 func clear_passengers() -> void:
-	# Clean up any indicators for current passengers
-	for passenger in current_passengers:
-		if passenger and is_instance_valid(passenger):
-			# If passenger has an indicator that was reparented, remove it
-			if passenger.destination_indicator and passenger.destination_indicator.get_parent() != passenger:
-				passenger.destination_indicator.queue_free()
-	
-	current_passengers.clear()
-	nearby_passengers.clear()
-
-# Function to drive forward in the direction the car is facing
-func drive() -> void:
-	if is_moving or is_turning:
-		# Prevent starting a new move until the current one finishes.
-		return
-		
-	var new_pos = grid_position
-	match current_direction:
-		Direction.NORTH:
-			new_pos.y -= 1
-		Direction.SOUTH:
-			new_pos.y += 1
-		Direction.EAST:
-			new_pos.x += 1
-		Direction.WEST:
-			new_pos.x -= 1
-			
-	# Check boundaries
-	if new_pos.x < 0 or new_pos.x >= grid_width or new_pos.y < 0 or new_pos.y >= grid_height:
-		print("Blocked: out of bounds")
-		return
-		
-	# Check tile_data for walls
-	var tile_char = tile_data[new_pos.y][new_pos.x]  # e.g. ' ', '#', 'd'
-	if tile_char == '#' or tile_char == 'x':
-		print("Blocked: wall present")
-		return
-	
-	grid_position = new_pos
-	
-	# Legacy door code - keep for compatibility
-	if tile_char == 'd':
-		var door_node = door_map.get(new_pos, null)
-		if door_node:
-			if door_node.has_method("get"):
-				# Set the teleport flag to true for door transitions
-				should_teleport = true
-				
-				# Attempt to read the door script's exports
-				var next_level = door_node.get("next_level_path")
-				var spawn_pos: Vector2i = door_node.get("next_level_spawn")
-				print("Stepped on a door at ", new_pos, ". Next level: ", next_level)
-				emit_signal("door_entered", next_level, spawn_pos)
-				grid_position = spawn_pos
-			else:
-				print("Door node found, but missing door script. No next_level data.")
-				
-	# Start the movement towards the new grid position
-	update_world_position()
-	
-	# Update nearby_passengers list after moving
-	refresh_nearby_passengers()
-
-# Function to turn the car left (counter-clockwise)
-func turn_left() -> void:
-	if is_moving or is_turning:
-		return
-		
-	# Update direction (subtract 1 with wrap-around)
-	current_direction = (current_direction - 1 + 4) % 4
-	start_turn_animation()
-	print("Turned left: now facing " + Direction.keys()[current_direction])
-	
-	# Update nearby_passengers list after turning
-	refresh_nearby_passengers()
-
-# Function to turn the car right (clockwise)
-func turn_right() -> void:
-	if is_moving or is_turning:
-		return
-		
-	# Update direction (add 1 with wrap-around)
-	current_direction = (current_direction + 1) % 4
-	start_turn_animation()
-	print("Turned right: now facing " + Direction.keys()[current_direction])
-	
-	# Update nearby_passengers list after turning
-	refresh_nearby_passengers()
-
-# New function: pick up a passenger
-func pick_up() -> bool:
-	if is_moving or is_turning:
-		return false
-	
-	if current_passengers.size() >= max_passengers:
-		print("Car is full! Cannot pick up more passengers.")
-		return false
-	
-	# Check for passengers in pickup range
-	if nearby_passengers.size() > 0:
-		for passenger in nearby_passengers:
-			if not passenger.is_picked_up and not passenger.is_delivered and not passenger.is_ragdolling:
-				if passenger.pick_up(self):
-					current_passengers.append(passenger)
-					print("Picked up passenger going to destination ", passenger.destination_id)
-					emit_signal("passenger_picked_up", passenger)
-					
-					# Update nearby passengers after pickup
-					refresh_nearby_passengers()
-					return true
-	
-	print("No passengers to pick up nearby!")
-	return false
-
-# New function: deliver a passenger
-func drop_off() -> bool:
-	if is_moving or is_turning:
-		return false
-	
-	if current_passengers.size() == 0:
-		print("No passengers in car to drop off!")
-		return false
-	
-	# Check adjacent cells for destinations
-	var positions_to_check = get_adjacent_positions()
-	
-	for pos in positions_to_check:
-		if destination_map.has(pos):
-			var destination = destination_map[pos]
-			
-			# Find a passenger that matches this destination
-			for i in range(current_passengers.size()):
-				var passenger = current_passengers[i]
-				if passenger.destination_id == destination.destination_id:
-					if passenger.deliver():  # Note: still using passenger.deliver() for compatibility
-						# Remove from current passengers array
-						current_passengers.remove_at(i)
-						
-						# Remove from passenger_map (important to prevent collision after delivery)
-						for map_pos in passenger_map:
-							if passenger_map[map_pos] == passenger:
-								passenger_map.erase(map_pos)
-								break
-								
-						destination.complete_delivery()
-						print("Dropped off passenger at destination ", destination.destination_id)
-						emit_signal("passenger_delivered", passenger, destination)
-						
-						# Check if all passengers have been delivered
-						check_level_completion()
-						
-						# Update nearby passengers after delivery
-						refresh_nearby_passengers()
-						return true
-	
-	print("No matching destination nearby for any passenger!")
-	return false
-
-# Get positions adjacent to the car
-func get_adjacent_positions() -> Array:
-	var positions = []
-	
-	# Add all four directions
-	positions.append(Vector2i(grid_position.x, grid_position.y - 1))  # North
-	positions.append(Vector2i(grid_position.x + 1, grid_position.y))  # East
-	positions.append(Vector2i(grid_position.x, grid_position.y + 1))  # South
-	positions.append(Vector2i(grid_position.x - 1, grid_position.y))  # West
-	
-	# Filter out invalid positions
-	var valid_positions = []
-	for pos in positions:
-		if pos.x >= 0 and pos.x < grid_width and pos.y >= 0 and pos.y < grid_height:
-			if tile_data[pos.y][pos.x] != '#' and tile_data[pos.y][pos.x] != 'x':
-				valid_positions.append(pos)
-	
-	return valid_positions
-
-# Check which passengers are in pickup range
-func refresh_nearby_passengers() -> void:
-	nearby_passengers.clear()
-	
-	var adjacent_positions = get_adjacent_positions()
-	for pos in adjacent_positions:
-		if passenger_map.has(pos):
-			var passenger = passenger_map[pos]
-			if not passenger.is_picked_up and not passenger.is_delivered and not passenger.is_ragdolling:
-				nearby_passengers.append(passenger)
-
-# Check if all passengers have been delivered
-# Check if all passengers have been delivered
-# Replace the entire check_level_completion function in Player.gd with this:
+    # Clean up any indicators for current passengers
+    for passenger in current_passengers:
+        if passenger and is_instance_valid(passenger):
+            # If passenger has an indicator that was reparented, remove it
+            if passenger.destination_indicator and passenger.destination_indicator.get_parent() != passenger:
+                passenger.destination_indicator.queue_free()
+    
+    current_passengers.clear()
+    nearby_passengers.clear()
+    nearby_destinations.clear()
 
 func check_level_completion() -> void:
-	# Get the level from the main scene
-	var level_manager = get_node("/root/Main/LevelManager")
-	if not level_manager:
-		return
-	
-	var current_level = level_manager.current_level_instance
-	if not current_level:
-		return
-		
-	# Count remaining passengers in the level
-	var all_passengers_delivered = true
-	
-	for pos in passenger_map:
-		var passenger = passenger_map[pos]
-		if not passenger.is_delivered and not passenger.is_ragdolling:
-			all_passengers_delivered = false
-			break
-	
-	# Check current passengers in car
-	if current_passengers.size() > 0:
-		all_passengers_delivered = false
-	
-	if all_passengers_delivered:
-		print("All passengers delivered! Level completed.")
-		emit_signal("level_completed")
-		
-		# Get next level information from the level itself
-		var next_level = current_level.next_level_path
-		
-		# If next_level_path is empty, try to find it from a door
-		if next_level == "":
-			# Find a door to use for next level info as a fallback
-			for door_pos in door_map:
-				var door = door_map[door_pos]
-				if door.has_method("get"):
-					next_level = door.get("next_level_path")
-					break
-		
-		# Go to next level after a delay if we have a path
-		if next_level != "":
-			print("Transitioning to next level after delay: ", next_level)
-			
-			# Create a transition effect (e.g., fade or message)
-			# For simplicity, we'll just use a timer
-			var transition_delay = current_level.transition_delay
-			if transition_delay <= 0:
-				transition_delay = 2.0 # Default delay
-				
-			var timer = get_tree().create_timer(transition_delay)
-			timer.timeout.connect(func():
-				# Just pass the next level path - spawn position will be determined by the level itself
-				emit_signal("door_entered", next_level, Vector2i(1, 1))
-			)
-
-# Helper function to start the turn animation
-func start_turn_animation() -> void:
-	rotation_start = rotation.y
-	rotation_target = direction_to_rotation(current_direction)
-	
-	# Ensure we take the shortest path when rotating
-	if abs(rotation_target - rotation_start) > PI:
-		if rotation_target > rotation_start:
-			rotation_start += 2 * PI
-		else:
-			rotation_target += 2 * PI
-			
-	animation_time = 0.0
-	is_turning = true
-
-# Convert direction enum to Y-axis rotation in radians
-func direction_to_rotation(dir: int) -> float:
-	match dir:
-		Direction.NORTH:
-			return 0.0        # 0 degrees - facing negative Z
-		Direction.EAST:
-			return -PI * 0.5  # -90 degrees - facing positive X
-		Direction.SOUTH:
-			return -PI        # -180 degrees - facing positive Z
-		Direction.WEST:
-			return -PI * 1.5  # -270 degrees - facing negative X
-	return 0.0
-
-# Update the model's rotation based on current direction
-func update_model_rotation() -> void:
-	rotation.y = direction_to_rotation(current_direction)
-	
-	# Also update the physics body rotation
-	if car_physics:
-		car_physics.rotation.y = rotation.y
-
-func update_world_position() -> void:
-	if should_teleport:
-		# Instantly teleport when transitioning levels
-		position = Vector3(
-			float(grid_position.x) * cell_size,
-			0.2,  # Lowered Y position for car
-			float(grid_position.y) * cell_size
-		)
-		is_moving = false
-		should_teleport = false  # Reset the flag
-		update_model_rotation()  # Make sure car is facing the right direction
-		print("Car teleported to grid coord:", grid_position)
-	else:
-		# Normal gliding animation for regular moves
-		move_start = position
-		move_target = Vector3(
-			float(grid_position.x) * cell_size,
-			0.2,  # Lowered Y position for car
-			float(grid_position.y) * cell_size
-		)
-		animation_time = 0.0
-		is_moving = true
-		print("Car moving to grid coord:", grid_position)
-
-func _process(delta: float) -> void:
-	if is_moving:
-		animation_time += delta
-		var t = animation_time / owner.run_delay
-		
-		# Clamp t to 1.0 so we don't overshoot.
-		if t >= 1.0:
-			t = 1.0
-			is_moving = false
-			
-		# Linear interpolation between start and target positions
-		position = move_start.lerp(move_target, t)
-		
-		# Update the physics body position
-		if car_physics:
-			car_physics.global_position = position
-	
-	if is_turning:
-		animation_time += delta
-		var t = animation_time / (owner.run_delay * 0.5)  # Half the time of movement
-		
-		if t >= 1.0:
-			t = 1.0
-			is_turning = false
-			rotation.y = rotation_target  # Ensure perfect alignment
-		else:
-			# Use a smooth rotation using lerp_angle
-			rotation.y = lerp_angle(rotation_start, rotation_target, t)
-			
-		# Update the physics body rotation
-		if car_physics:
-			car_physics.rotation.y = rotation.y
-
-# NEW COLLISION DETECTION
-# This function will be called when any physics body enters the pickup area
-func _on_pickup_area_body_entered(body: Node) -> void:
-	print("Body entered pickup area: ", body.name)
-	
-	# First check if the body is the ragdoll body of a passenger
-	if body is RigidBody3D and body.get_parent() and body.get_parent().has_method("activate_ragdoll"):
-		var passenger = body.get_parent()
-		print("Passenger detected: ", passenger.name)
-		
-		# Only activate if the passenger is not already picked up or delivered
-		if not passenger.is_picked_up and not passenger.is_delivered and not passenger.is_ragdolling:
-			print("Activating passenger ragdoll")
-			passenger.activate_ragdoll(self, current_direction)
-			emit_signal("passenger_hit", passenger)
-			
-			# Directly call the level manager's reset function
-			var level_manager = get_node("/root/Main/LevelManager")
-			if level_manager and level_manager.has_method("schedule_level_reset"):
-				level_manager.schedule_level_reset(passenger)
+    # Get the level from the main scene
+    var level_manager = get_node("/root/Main/LevelManager")
+    if not level_manager:
+        return
+    
+    var current_level = level_manager.current_level_instance
+    if not current_level:
+        return
+    
+    # Check if all required passengers have been delivered
+    var all_delivered = true
+    for node in get_tree().get_nodes_in_group("passengers"):
+        if not node.is_delivered and not node.is_ragdolling:
+            all_delivered = false
+            break
+    
+    # Also check if there are any passengers still in the car
+    if current_passengers.size() > 0:
+        all_delivered = false
+    
+    if all_delivered:
+        print("All passengers delivered! Level completed.")
+        emit_signal("level_completed")
+        
+        # Transition to next level if available
+        if current_level.has_method("get") and current_level.get("next_level_path") != "":
+            var next_level = current_level.next_level_path
+            var transition_delay = 2.0
+            
+            if current_level.has_method("get") and current_level.get("transition_delay") > 0:
+                transition_delay = current_level.transition_delay
+            
+            var timer = get_tree().create_timer(transition_delay)
+            timer.timeout.connect(func():
+                emit_signal("door_entered", next_level, Vector2i(1, 1))
+            )
