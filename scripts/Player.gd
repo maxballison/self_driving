@@ -2,22 +2,20 @@ extends RigidBody3D
 
 # Movement variables
 var is_driving: bool = false
-var move_speed: float = 5.0  # Units per second
-var is_turning: bool = false
+var move_speed: float = 25.0  # Speed for movement
+var max_velocity: float = 10.0  # Maximum velocity to prevent excessive speed
+var turn_in_progress: bool = false
+var turn_direction: int = 0 # 1 for left, -1 for right
+var turn_queued: bool = false
 var can_reset: bool = true
+var is_grounded: bool = false # Track if car is on the ground
 
 # Direction vector (normalized)
-var current_direction_vec: Vector3 = Vector3(1, 0, 0)  # Default: facing East
+var current_direction: Vector3 = Vector3(0, 0, -1)  # Forward direction
 
 # Fall detection
 var fall_threshold: float = -10.0  # Y position below which the car is considered fallen
-
-# Wheel raycast properties
-var suspension_rest_length: float = 0.5
-var suspension_stiffness: float = 500.0
-var suspension_damping: float = 100.0
-var wheel_mass: float = 10.0
-var ground_friction: float = 50.0
+var reset_in_progress: bool = false  # Track if a reset is already happening
 
 # Passenger tracking
 var current_passengers: Array = []
@@ -30,13 +28,6 @@ var nearby_destinations: Array = []
 @onready var car_model = $CarModel
 @onready var reset_protection_timer = $ResetProtectionTimer
 
-# Wheel raycasts
-@onready var wheel_ray_fl = $WheelRayFL
-@onready var wheel_ray_fr = $WheelRayFR
-@onready var wheel_ray_bl = $WheelRayBL
-@onready var wheel_ray_br = $WheelRayBR
-var wheel_rays = []
-
 # Signals
 signal door_entered(next_level_path: String, next_level_spawn: Vector2i)
 signal passenger_hit(passenger)
@@ -45,11 +36,12 @@ signal passenger_delivered(passenger, destination)
 signal level_completed()
 
 func _ready() -> void:
-	# Initialize wheel raycasts
-	wheel_rays = [wheel_ray_fl, wheel_ray_fr, wheel_ray_bl, wheel_ray_br]
-	
-	# Set initial direction vector based on rotation
+	# Set initial direction based on rotation
 	update_direction_from_rotation()
+	
+	# Initialize physics
+	linear_velocity = Vector3.ZERO
+	angular_velocity = Vector3.ZERO
 	
 	# Connect pickup area signals
 	if pickup_area:
@@ -65,150 +57,146 @@ func _ready() -> void:
 	if not reset_protection_timer.is_connected("timeout", Callable(self, "_on_reset_protection_timeout")):
 		reset_protection_timer.timeout.connect(_on_reset_protection_timeout)
 	
-	clear_passengers()
+	# Make sure reset flags are cleared
+	reset_in_progress = false
+	can_reset = true
 	
-	# Set initial wheel ray lengths
-	for ray in wheel_rays:
-		ray.target_position.y = -suspension_rest_length
+	clear_passengers()
 
 func _physics_process(delta: float) -> void:
-	# Apply suspension forces for each wheel
-	apply_wheel_physics(delta)
+	# Check if car is grounded
+	is_grounded = _check_grounded()
 	
-	# Keep the car's rotation clean (prevent rolling on sides)
-	var current_rot = rotation
-	rotation = Vector3(0, current_rot.y, 0)
+	# Only restrict rotation if we're on the ground
+	if is_grounded:
+		# Keep the car upright on ground (no rolling)
+		var current_rot = rotation
+		rotation = Vector3(0, current_rot.y, 0)
+		
+		# Prevent flipping by zeroing out x and z angular velocity
+		angular_velocity.x = 0
+		angular_velocity.z = 0
 	
-	# Limit angular velocity to prevent excessive spinning
-	angular_velocity.x = 0
-	angular_velocity.z = 0
+	# Apply continuous driving force if needed (only when grounded)
+	if is_driving and not turn_in_progress and is_grounded:
+		# Calculate current forward velocity
+		var forward_velocity = current_direction.dot(linear_velocity)
+		
+		# Only apply force if below max speed
+		if forward_velocity < max_velocity:
+			# Apply less force as we approach max speed
+			var speed_factor = clamp(1.0 - (forward_velocity / max_velocity), 0.1, 1.0)
+			apply_central_force(current_direction * move_speed * 40.0 * speed_factor)
 	
-	# Check for falling below threshold
-	if position.y < fall_threshold and can_reset:
+	# Process turn queue if needed
+	if turn_queued and not turn_in_progress:
+		turn_queued = false
+		_perform_turn()
+	
+	# Check for falling below threshold (with additional protection against multiple resets)
+	if position.y < fall_threshold and can_reset and not reset_in_progress:
 		_handle_fall()
 
-func apply_wheel_physics(delta: float) -> void:
-	var wheels_on_ground = 0
-	var driving_force_multiplier = 0
+# Ground check using raycasts
+func _check_grounded() -> bool:
+	# Cast a ray downward to check for ground
+	var ray_length = 0.4 # Adjust based on car height
+	var space_state = get_world_3d().direct_space_state
 	
-	# Track how many wheels are touching the ground
-	for ray in wheel_rays:
-		if ray.is_colliding():
-			wheels_on_ground += 1
-			
-			# Apply suspension forces
-			var hit_point = ray.get_collision_point()
-			var surface_normal = ray.get_collision_normal()
-			var current_length = (global_transform.origin + ray.position - hit_point).length() 
-			var spring_force = suspension_stiffness * (suspension_rest_length - current_length)
-			
-			# Calculate and apply the suspension force
-			var force_direction = -surface_normal
-			var force = force_direction * spring_force
-			
-			# Apply the force at the wheel's position
-			apply_force(force, ray.position)
-			
-			# Calculate the driving force direction based on our current direction
-			if is_driving and not is_turning:
-				# Apply driving force along the ground plane (perpendicular to surface normal)
-				var drive_dir = current_direction_vec.slide(surface_normal).normalized()
-				var drive_force = drive_dir * move_speed * 200.0 * delta
-				
-				# Apply driving force
-				apply_force(drive_force, ray.position)
-				driving_force_multiplier += 1
-			
-			# Apply friction to prevent sliding
-			var lateral_vel = linear_velocity.slide(surface_normal)
-			var friction_force = -lateral_vel.normalized() * lateral_vel.length() * ground_friction * delta
-			apply_central_force(friction_force)
+	# Create a query for the raycast
+	var query = PhysicsRayQueryParameters3D.create(
+		global_position,
+		global_position + Vector3(0, -ray_length, 0),
+		1, # Collision mask (Layer 1)
+		[get_rid()] # Exclude self
+	)
 	
-	# Car is in air - no driving forces
-	if wheels_on_ground == 0 and is_driving:
-		# Apply a small directional push while airborne to maintain some control
-		apply_central_force(current_direction_vec * move_speed * 20.0 * delta)
-	
-	# Apply stronger driving force if fewer wheels are on the ground
-	# This helps the car drive off ledges more easily
-	if driving_force_multiplier > 0:
-		var boost_factor = 4.0 / driving_force_multiplier  # Scale up force when fewer wheels touching
-		apply_central_force(current_direction_vec * move_speed * 100.0 * boost_factor * delta)
+	var result = space_state.intersect_ray(query)
+	return not result.is_empty()
 
 func update_direction_from_rotation() -> void:
 	# Calculate direction vector from rotation
-	current_direction_vec = Vector3(0, 0, -1).rotated(Vector3.UP, rotation.y).normalized()
-	print("Direction updated: ", current_direction_vec)
+	current_direction = Vector3(0, 0, -1).rotated(Vector3.UP, rotation.y).normalized()
+	print("Direction updated: ", current_direction)
+
+# Actually perform the turn
+func _perform_turn() -> void:
+	if turn_in_progress:
+		return
+	
+	turn_in_progress = true
+	
+	# Store current driving state
+	var was_driving = is_driving
+	is_driving = false
+	
+	# Apply braking force for stability
+	var brake_force = -linear_velocity * 8.0
+	apply_central_force(brake_force)
+	
+	# Rotate based on direction
+	rotation.y += PI/2 * turn_direction
+	update_direction_from_rotation()
+	
+	# Apply impulse in new direction if grounded
+	if is_grounded:
+		apply_central_impulse(current_direction * move_speed * 0.3)
+	
+	# Schedule turn completion
+	var timer = get_tree().create_timer(0.1)
+	await timer.timeout
+	
+	# Turn is done
+	turn_in_progress = false
+	is_driving = was_driving
+	
+	print("Turn completed")
 
 # COMMAND FUNCTIONS
 
 func drive() -> void:
 	is_driving = true
+	
+	# Only apply impulse if grounded
+	if is_grounded:
+		# Apply initial impulse to get moving immediately
+		apply_central_impulse(current_direction * move_speed * 0.5)
+	
 	print("Car started driving continuously")
 
 func stop() -> void:
+	if not is_driving:
+		return
+		
 	is_driving = false
-	print("Car stopped")
 	
 	# Apply braking force
-	apply_central_force(-linear_velocity.normalized() * 500.0)
+	var brake_force = -linear_velocity.normalized() * linear_velocity.length() * 10.0
+	apply_central_force(brake_force)
+	print("Car stopped")
 
 func turn_left() -> void:
-	if is_turning:
-		return
-	
-	is_turning = true
-	
-	# Stop current movement during turn
-	var prev_driving = is_driving
-	is_driving = false
-	
-	# Rotate immediately
-	rotation.y += PI/2
-	update_direction_from_rotation()
-	
-	# Small delay to allow physics to update
-	await get_tree().create_timer(0.05).timeout
-	
-	# Resume driving if we were driving before
-	is_turning = false
-	is_driving = prev_driving
-	
-	print("Turned left by 90 degrees")
+	# Queue a left turn
+	turn_direction = 1
+	turn_queued = true
+	print("Turn left queued")
 
 func turn_right() -> void:
-	if is_turning:
-		return
-	
-	is_turning = true
-	
-	# Stop current movement during turn
-	var prev_driving = is_driving
-	is_driving = false
-	
-	# Rotate immediately
-	rotation.y -= PI/2
-	update_direction_from_rotation()
-	
-	# Small delay to allow physics to update
-	await get_tree().create_timer(0.05).timeout
-	
-	# Resume driving if we were driving before
-	is_turning = false
-	is_driving = prev_driving
-	
-	print("Turned right by 90 degrees")
+	# Queue a right turn
+	turn_direction = -1
+	turn_queued = true
+	print("Turn right queued")
 
 func wait(seconds: float) -> void:
-	# Create a timer to pause execution
-	var prev_driving = is_driving
+	# Store current driving state
+	var was_driving = is_driving
 	is_driving = false
-	print("Waiting for ", seconds, " seconds")
 	
+	print("Waiting for ", seconds, " seconds")
 	await get_tree().create_timer(seconds).timeout
 	
-	# Resume previous state if we were driving
-	is_driving = prev_driving
+	# Resume previous state
+	is_driving = was_driving
 	print("Wait complete, driving state: ", is_driving)
 
 func pick_up() -> bool:
@@ -301,15 +289,24 @@ func _handle_fall() -> void:
 	
 	# Prevent multiple resets
 	can_reset = false
+	reset_in_progress = true
+	
+	# Start the protection timer
 	reset_protection_timer.start()
 	
 	# Call reset on the level manager
 	var level_manager = get_node("/root/Main/LevelManager")
 	if level_manager and level_manager.has_method("schedule_level_reset"):
 		level_manager.schedule_level_reset()
+		
+		# Position the car above ground temporarily to stop fall detection
+		global_position.y = 5.0  # Move car up out of falling threshold
+		linear_velocity = Vector3.ZERO  # Stop all movement
+		angular_velocity = Vector3.ZERO  # Stop all rotation
 
 func _on_reset_protection_timeout() -> void:
 	can_reset = true
+	reset_in_progress = false
 
 func clear_passengers() -> void:
 	# Clean up any indicators for current passengers

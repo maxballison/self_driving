@@ -44,6 +44,7 @@ offset_right = 2505.0
 offset_bottom = 831.0
 
 [node name="MovingBackground" parent="." instance=ExtResource("8_t66kt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5.81658, 0)
 
 [connection signal="level_switched" from="LevelManager" to="Camera3D" method="_on_level_manager_level_switched"]
 [connection signal="level_switched" from="LevelManager" to="TutorialWindow" method="_on_level_switched"]

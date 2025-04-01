@@ -84,14 +84,15 @@ size = Vector3(0.69751, 0.5, 0.999756)
 [node name="Player" type="RigidBody3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
 collision_layer = 4
-collision_mask = 1
-mass = 40.0
+mass = 15.0
+gravity_scale = 4.0
 center_of_mass_mode = 1
-center_of_mass = Vector3(0, -0.1, 0)
-gravity_scale = 3.0
+center_of_mass = Vector3(0, -0.05, 0)
 can_sleep = false
-linear_damp = 0.0
-angular_damp = 5.0
+contact_monitor = true
+max_contacts_reported = 4
+linear_damp = 0.3
+angular_damp = 0.6
 script = ExtResource("1_mjbbh")
 
 [node name="CarModel" type="Node3D" parent="."]
@@ -183,29 +184,17 @@ wait_time = 0.5
 one_shot = true
 
 [node name="WheelRayFL" type="RayCast3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0, -0.4)
-target_position = Vector3(0, -0.7, 0)
-collision_mask = 1
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.1, -0.3)
 debug_shape_custom_color = Color(0, 0.94902, 0, 1)
-debug_shape_thickness = 2.0
 
 [node name="WheelRayFR" type="RayCast3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0, -0.4)
-target_position = Vector3(0, -0.7, 0)
-collision_mask = 1
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0.1, -0.3)
 debug_shape_custom_color = Color(0, 0.94902, 0, 1)
-debug_shape_thickness = 2.0
 
 [node name="WheelRayBL" type="RayCast3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0, 0.4)
-target_position = Vector3(0, -0.7, 0)
-collision_mask = 1
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2, 0.1, 0.3)
 debug_shape_custom_color = Color(0, 0.94902, 0, 1)
-debug_shape_thickness = 2.0
 
 [node name="WheelRayBR" type="RayCast3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0, 0.4)
-target_position = Vector3(0, -0.7, 0)
-collision_mask = 1
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2, 0.1, 0.3)
 debug_shape_custom_color = Color(0, 0.94902, 0, 1)
-debug_shape_thickness = 2.0
