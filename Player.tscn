@@ -81,8 +81,17 @@ size = Vector3(0.608398, 0.3, 0.920898)
 [sub_resource type="BoxShape3D" id="BoxShape3D_car_area"]
 size = Vector3(0.69751, 0.5, 0.999756)
 
-[node name="Player" type="Node3D"]
+[node name="Player" type="RigidBody3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+collision_layer = 4
+collision_mask = 1
+mass = 40.0
+center_of_mass_mode = 1
+center_of_mass = Vector3(0, -0.1, 0)
+gravity_scale = 3.0
+can_sleep = false
+linear_damp = 0.0
+angular_damp = 5.0
 script = ExtResource("1_mjbbh")
 
 [node name="CarModel" type="Node3D" parent="."]
@@ -158,11 +167,7 @@ randomness = 0.2
 process_material = SubResource("ParticleProcessMaterial_exhaust")
 draw_pass_1 = SubResource("QuadMesh_exhaust")
 
-[node name="CarPhysicsBody" type="AnimatableBody3D" parent="."]
-collision_layer = 4
-collision_mask = 2
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="CarPhysicsBody"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("BoxShape3D_car_hitbox")
 
 [node name="PassengerPickupArea" type="Area3D" parent="."]
@@ -172,3 +177,35 @@ monitorable = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="PassengerPickupArea"]
 shape = SubResource("BoxShape3D_car_area")
+
+[node name="ResetProtectionTimer" type="Timer" parent="."]
+wait_time = 0.5
+one_shot = true
+
+[node name="WheelRayFL" type="RayCast3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0, -0.4)
+target_position = Vector3(0, -0.7, 0)
+collision_mask = 1
+debug_shape_custom_color = Color(0, 0.94902, 0, 1)
+debug_shape_thickness = 2.0
+
+[node name="WheelRayFR" type="RayCast3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0, -0.4)
+target_position = Vector3(0, -0.7, 0)
+collision_mask = 1
+debug_shape_custom_color = Color(0, 0.94902, 0, 1)
+debug_shape_thickness = 2.0
+
+[node name="WheelRayBL" type="RayCast3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3, 0, 0.4)
+target_position = Vector3(0, -0.7, 0)
+collision_mask = 1
+debug_shape_custom_color = Color(0, 0.94902, 0, 1)
+debug_shape_thickness = 2.0
+
+[node name="WheelRayBR" type="RayCast3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0, 0.4)
+target_position = Vector3(0, -0.7, 0)
+collision_mask = 1
+debug_shape_custom_color = Color(0, 0.94902, 0, 1)
+debug_shape_thickness = 2.0
