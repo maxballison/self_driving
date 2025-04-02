@@ -63,7 +63,13 @@ func _ready() -> void:
 	
 	# Connect pickup area signals
 	if pickup_area:
-		pickup_area.collision_mask = 2  # Layer 2 (passengers)
+		# Set collision layer/mask for pickup area
+		# Layer 4 for pickup area + detect both passengers (layer 2) and destinations (layer 8)
+		pickup_area.collision_layer = 4    # Layer 3 (player pickup area)
+		pickup_area.collision_mask = 10    # Layers 2 (passengers) and 4 (destinations)
+		
+		print("Configured player pickup area with layer: ", pickup_area.collision_layer, 
+			  " and mask: ", pickup_area.collision_mask)
 		
 		if not pickup_area.is_connected("body_entered", Callable(self, "_on_pickup_area_body_entered")):
 			pickup_area.connect("body_entered", Callable(self, "_on_pickup_area_body_entered"))
@@ -407,14 +413,30 @@ func _on_pickup_area_body_entered(body: Node) -> void:
 			if not nearby_passengers.has(passenger):
 				nearby_passengers.append(passenger)
 	
-	# Handle destinations
+	# Handle destinations with improved detection
 	var destination = null
-	if body.has_method("is_destination"):
-		destination = body
-	elif body.get_parent() and body.get_parent().has_method("is_destination"):
-		destination = body.get_parent()
 	
+	# Try multiple detection methods
+	if body.has_method("is_destination"):
+		# Direct method presence
+		destination = body
+		print("Detected destination directly via method: ", body.name)
+	elif body.get_parent() and body.get_parent().has_method("is_destination"):
+		# Parent has the method
+		destination = body.get_parent()
+		print("Detected destination via parent: ", body.get_parent().name)
+	elif body.has_node("DeliveryArea") or (body.get_parent() and body.get_parent().has_node("DeliveryArea")):
+		# Has delivery area node
+		if body.has_node("DeliveryArea"):
+			destination = body
+			print("Detected destination via DeliveryArea node: ", body.name)
+		else:
+			destination = body.get_parent()
+			print("Detected destination via parent DeliveryArea: ", body.get_parent().name)
+	
+	# Add destination to nearby list if found
 	if destination and not nearby_destinations.has(destination):
+		print("Adding destination to nearby destinations list: ", destination.name)
 		nearby_destinations.append(destination)
 
 func _on_pickup_area_body_exited(body: Node) -> void:
@@ -455,29 +477,38 @@ func _on_player_body_entered(body: Node) -> void:
 	var passenger = null
 	
 	# Try various ways to find the actual passenger
-	if body.has_method("is_passenger"):
-		# Direct passenger object
+	if body.has_method("is_passenger") or "passenger" in body.name.to_lower():
+		# Direct passenger object (SimplePassenger is the passenger itself)
 		passenger = body
-	elif body.get_parent() and body.get_parent().has_method("is_passenger"):
-		# Parent is passenger
+		print("Direct passenger collision detected: ", body.name)
+	elif body.get_parent() and (body.get_parent().has_method("is_passenger") or "passenger" in body.get_parent().name.to_lower()):
+		# Parent is passenger (PassengerPhysics case)
 		passenger = body.get_parent()
-	elif body.get_parent() and body.get_parent().get_parent() and body.get_parent().get_parent().has_method("is_passenger"):
-		# Grandparent is passenger
-		passenger = body.get_parent().get_parent()
+		print("Parent passenger collision detected: ", body.get_parent().name)
 	
 	if passenger:
 		print("Player hit passenger: ", passenger.name)
 		
-		# Only activate ragdoll if not already in special state
-		if not passenger.is_picked_up and not passenger.is_delivered and not passenger.is_ragdolling:
-			# Activate passenger ragdoll physics
-			passenger.activate_ragdoll(self, -1)
-			emit_signal("passenger_hit", passenger)
-			
-			# Schedule a level reset (with delay to see physics effects)
-			var level_manager = get_node("/root/Main/LevelManager")
-			if level_manager and level_manager.has_method("schedule_level_reset"):
-				level_manager.schedule_level_reset(passenger)
+		# Check if passenger has the activate_ragdoll method
+		if passenger.has_method("activate_ragdoll"):
+			# Only activate ragdoll if not already in special state
+			if not ("is_picked_up" in passenger and passenger.is_picked_up) and \
+			   not ("is_delivered" in passenger and passenger.is_delivered) and \
+			   not ("is_ragdolling" in passenger and passenger.is_ragdolling):
+				# Activate passenger ragdoll physics
+				print("Activating ragdoll for: ", passenger.name)
+				passenger.activate_ragdoll(self, -1)
+				emit_signal("passenger_hit", passenger)
+				
+				# Play sound effect if available
+				var main = get_node_or_null("/root/Main")
+				if main and main.has_method("play_sound"):
+					main.play_sound("crash", -5, 0.9 + randf() * 0.2)
+				
+				# Schedule a level reset (with delay to see physics effects)
+				var level_manager = get_node("/root/Main/LevelManager")
+				if level_manager and level_manager.has_method("schedule_level_reset"):
+					level_manager.schedule_level_reset(passenger)
 
 # UTILITY FUNCTIONS
 

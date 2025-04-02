@@ -124,27 +124,58 @@ func deliver() -> bool:
 	return true
 
 func activate_ragdoll(car = null, car_direction: int = -1) -> void:
-	print("Activating passenger ragdoll physics!")
+	print("Activating passenger ragdoll physics for: ", name)
 	
 	if is_ragdolling or is_picked_up or is_delivered:
+		print("Cannot activate ragdoll - passenger already in special state")
 		return
 	
 	is_ragdolling = true
 	car_ref = car
 	
-	# Hide regular model and show ragdoll
+	# Find components if they haven't been assigned yet
+	if visual_model == null:
+		for child in get_children():
+			if (child is MeshInstance3D or child is Node3D) and "ragdoll" not in child.name.to_lower() and "destination" not in child.name.to_lower() and not child is RigidBody3D:
+				visual_model = child
+				print("Found visual model: ", child.name)
+			
+	if destination_indicator == null:
+		for child in get_children():
+			if child is MeshInstance3D and "destination" in child.name.to_lower():
+				destination_indicator = child
+				print("Found destination indicator: ", child.name)
+				
+	if ragdoll_body == null:
+		for child in get_children():
+			if child is RigidBody3D:
+				ragdoll_body = child
+				print("Found ragdoll body: ", child.name)
+				
+	# Hide regular model (if found)
 	if visual_model:
+		print("Hiding visual model")
 		visual_model.visible = false
+	else:
+		print("WARNING: No visual model found for passenger")
 	
 	if destination_indicator:
+		print("Hiding destination indicator")
 		destination_indicator.visible = false
+	else:
+		print("WARNING: No destination indicator found for passenger")
 	
 	# Activate ragdoll physics
 	if ragdoll_body:
+		print("Activating ragdoll physics body")
 		ragdoll_body.visible = true
 		
+		# Ensure ragdoll has correct collision settings
+		ragdoll_body.collision_layer = 2   # Layer 2 (passengers)
+		ragdoll_body.collision_mask = 7    # Layers 1, 2, 3 (environment, passengers, car)
+		
 		# Calculate force direction - make stronger for more dramatic effect
-		var impulse = Vector3(0, 8, 0)  # Increased upward force
+		var impulse = Vector3(0, 10, 0)  # Increased upward force
 		
 		if car:
 			# Calculate impulse based on car's position and direction
@@ -153,7 +184,7 @@ func activate_ragdoll(car = null, car_direction: int = -1) -> void:
 			# If car_direction is -1, use physical relative positioning
 			if car_direction == -1:
 				# Apply force away from car direction with upward component
-				impulse = -dir_to_car * 20.0 + Vector3(0, 8, 0)  # Increased force
+				impulse = -dir_to_car * 25.0 + Vector3(0, 10, 0)  # Increased force
 			else:
 				# Apply force based on car's discrete direction
 				var dir_vec = Vector3.ZERO
@@ -163,7 +194,10 @@ func activate_ragdoll(car = null, car_direction: int = -1) -> void:
 					2: dir_vec = Vector3(0, 0, 1)   # South
 					3: dir_vec = Vector3(-1, 0, 0)  # West
 				
-				impulse = dir_vec * 20.0 + Vector3(0, 8, 0)  # Increased force
+				impulse = dir_vec * 25.0 + Vector3(0, 10, 0)  # Increased force
+		
+		# Make sure ragdoll is at the passenger's position
+		ragdoll_body.global_position = global_position
 		
 		# Unfreeze physics and apply forces
 		ragdoll_body.freeze = false
@@ -171,10 +205,10 @@ func activate_ragdoll(car = null, car_direction: int = -1) -> void:
 		
 		# Add more random torque for more dramatic tumbling
 		var random_torque = Vector3(
-			randf_range(-2, 2),  # Increased range
-			randf_range(-2, 2),
-			randf_range(-2, 2)
-		).normalized() * 25.0  # Increased torque
+			randf_range(-3, 3),  # Increased range
+			randf_range(-3, 3),
+			randf_range(-3, 3)
+		).normalized() * 30.0  # Increased torque
 		
 		ragdoll_body.apply_torque(random_torque)
 		

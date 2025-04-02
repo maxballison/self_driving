@@ -1,8 +1,8 @@
 @tool
 extends EditorScript
 
-@export var blueprint_file_path: String = "res://blueprints/blueprint2.txt"
-@export var output_scene_path: String = "res://GeneratedLevels/level_2.tscn"
+@export var blueprint_file_path: String = "res://blueprints/blueprint3.txt"
+@export var output_scene_path: String = "res://GeneratedLevels/level_3.tscn"
 
 var tile_mapping := {
 	'#': "res://tiles/TileWall.tscn",
@@ -75,7 +75,27 @@ func generate_level_from_blueprint(source_file: String, target_scene: String) ->
 	# Shuffle the destination IDs for variety
 	destination_ids.shuffle()
 
-	# Second pass: Create the actual tile instances
+	# Second pass: Create floor tiles first
+	for y in range(lines.size()):
+		var line = lines[y]
+		for x in range(line.length()):
+			var c = line[x]
+			# Create floor tiles for any non-wall character
+			if c != '#' and c != 'x':
+				# Add floor tile under passengers and destinations
+				var floor_scene = load("res://tiles/TileEmpty.tscn")
+				if floor_scene:
+					var floor_instance = floor_scene.instantiate()
+					floor_instance.name = "TileFloor_" + str(x) + "_" + str(y)
+					floor_instance.position = Vector3(
+						float(x) * cell_size,
+						0.0,
+						float(y) * cell_size
+					)
+					root_node.add_child(floor_instance)
+					floor_instance.owner = root_node
+
+	# Third pass: Create the actual tile instances (walls, passengers, destinations)
 	for y in range(lines.size()):
 		var line = lines[y]
 		for x in range(line.length()):
@@ -83,6 +103,10 @@ func generate_level_from_blueprint(source_file: String, target_scene: String) ->
 			if tile_mapping.has(c):
 				var scene_path = tile_mapping[c]
 				if scene_path != "":
+					# Skip empty tiles as we already created floor tiles in the second pass
+					if c == ' ':
+						continue
+						
 					var tile_scene = load(scene_path)  # a PackedScene
 					if tile_scene:
 						var tile_instance = tile_scene.instantiate()

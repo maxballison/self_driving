@@ -61,8 +61,13 @@ func _ready() -> void:
 	if animation_player:
 		animation_player.play("flag_wave")
 	
-	# Connect delivery area signals for physics-based detection
+	# Configure delivery area for proper physics detection
 	if delivery_area:
+		# Set collision mask to detect the player's pickup area (Layer 4)
+		delivery_area.collision_layer = 8   # Layer 4 - destination areas
+		delivery_area.collision_mask = 4    # Layer 3 - player/car
+		
+		# Connect delivery area signals for physics-based detection
 		if not delivery_area.is_connected("body_entered", Callable(self, "_on_delivery_area_body_entered")):
 			delivery_area.connect("body_entered", Callable(self, "_on_delivery_area_body_entered"))
 		
@@ -97,22 +102,58 @@ func setup_golden_particles() -> void:
 
 func _on_delivery_area_body_entered(body: Node) -> void:
 	# Detect when a car enters the delivery area
-	if body is Node3D and body.get_parent() and body.get_parent().has_method("drive"):
-		var car = body.get_parent()
-		
-		# Add this destination to the car's nearby destinations
+	print("Delivery area detected body: ", body.name)
+	
+	# More robust detection for the player car
+	var car = null
+	if body is RigidBody3D and body.name == "Player":
+		# Direct body is the player car
+		car = body
+		print("Direct player car detected!")
+	elif body is Node3D and body.get_parent() and body.get_parent().has_method("drive"):
+		# Parent has drive method (traditional detection)
+		car = body.get_parent()
+		print("Parent car detected via drive method")
+	
+	# Add this destination to the car's nearby destinations
+	if car != null:
 		if car.has_method("_on_pickup_area_body_entered"):
 			# Pass this node as parent to the car
+			print("Adding destination to car's nearby destinations")
 			car._on_pickup_area_body_entered(self)
+		elif "nearby_destinations" in car:
+			# Direct property access as fallback
+			print("Direct property access for destinations")
+			if not car.nearby_destinations.has(self):
+				car.nearby_destinations.append(self)
 
 func _on_delivery_area_body_exited(body: Node) -> void:
 	# Detect when a car leaves the delivery area
-	if body is Node3D and body.get_parent() and body.get_parent().has_method("drive"):
-		var car = body.get_parent()
-		
-		# Remove this destination from the car's nearby destinations
+	print("Body exited delivery area: ", body.name)
+	
+	# More robust detection for the player car
+	var car = null
+	if body is RigidBody3D and body.name == "Player":
+		# Direct body is the player car
+		car = body
+		print("Player car exited")
+	elif body is Node3D and body.get_parent() and body.get_parent().has_method("drive"):
+		# Parent has drive method (traditional detection)
+		car = body.get_parent()
+		print("Parent car exited")
+	
+	# Remove this destination from the car's nearby destinations
+	if car != null:
 		if car.has_method("_on_pickup_area_body_exited"):
+			# Use method if available
+			print("Removing destination using method")
 			car._on_pickup_area_body_exited(self)
+		elif "nearby_destinations" in car:
+			# Direct property access as fallback
+			print("Removing destination using direct property access")
+			var idx = car.nearby_destinations.find(self)
+			if idx != -1:
+				car.nearby_destinations.remove_at(idx)
 
 func complete_delivery() -> void:
 	if is_completed:

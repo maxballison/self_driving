@@ -8,7 +8,7 @@ var cell_size: float = 1.0
 signal level_switched()
 
 func _ready() -> void:
-	load_level("res://GeneratedLevels/level_2.tscn")
+	load_level("res://GeneratedLevels/level_3.tscn")
 
 func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1)) -> void:
 	print("Loading level: ", scene_path)
