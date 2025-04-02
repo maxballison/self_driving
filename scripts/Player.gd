@@ -64,9 +64,9 @@ func _ready() -> void:
 	# Connect pickup area signals
 	if pickup_area:
 		# Set collision layer/mask for pickup area
-		# Layer 4 for pickup area + detect both passengers (layer 2) and destinations (layer 8)
-		pickup_area.collision_layer = 4    # Layer 3 (player pickup area)
-		pickup_area.collision_mask = 10    # Layers 2 (passengers) and 4 (destinations)
+		# Layer 4 for pickup area + detect passengers (layer 2), destinations (layer 8), and doors (layer 16)
+		pickup_area.collision_layer = 4     # Layer 3 (player pickup area)
+		pickup_area.collision_mask = 26     # Layers 2 (passengers) + 8 (destinations) + 16 (doors)
 		
 		print("Configured player pickup area with layer: ", pickup_area.collision_layer, 
 			  " and mask: ", pickup_area.collision_mask)
@@ -335,16 +335,12 @@ func turn_right() -> void:
 	print("Turn right queued")
 
 func wait(seconds: float) -> void:
-	# Store current driving state
-	var was_driving = is_driving
-	is_driving = false
+	# The wait function should only pause script execution without changing the car's movement
 	
 	print("Waiting for ", seconds, " seconds")
 	await get_tree().create_timer(seconds).timeout
 	
-	# Resume previous state
-	is_driving = was_driving
-	print("Wait complete, driving state: ", is_driving)
+	print("Wait complete, continuing script execution")
 
 func pick_up() -> bool:
 	if current_passengers.size() >= max_passengers:
@@ -438,6 +434,32 @@ func _on_pickup_area_body_entered(body: Node) -> void:
 	if destination and not nearby_destinations.has(destination):
 		print("Adding destination to nearby destinations list: ", destination.name)
 		nearby_destinations.append(destination)
+	
+	# Handle door detection
+	var door = null
+	
+	# Try multiple detection methods for doors (similar to destinations)
+	if body.has_method("is_door"):
+		# Direct method presence
+		door = body
+		print("Detected door directly via method: ", body.name)
+	elif body.get_parent() and body.get_parent().has_method("is_door"):
+		# Parent has the method
+		door = body.get_parent()
+		print("Detected door via parent: ", body.get_parent().name)
+	elif body.has_node("DoorArea") or (body.get_parent() and body.get_parent().has_node("DoorArea")):
+		# Has door area node
+		if body.has_node("DoorArea"):
+			door = body
+			print("Detected door via DoorArea node: ", body.name)
+		else:
+			door = body.get_parent()
+			print("Detected door via parent DoorArea: ", body.get_parent().name)
+	
+	# If door found, trigger transition immediately
+	if door and door.has_method("_on_door_area_body_entered"):
+		print("Processing door entry from pickup area detection")
+		door._on_door_area_body_entered(self)
 
 func _on_pickup_area_body_exited(body: Node) -> void:
 	# Remove destinations/passengers from the nearby lists when they exit using improved detection
@@ -468,6 +490,8 @@ func _on_pickup_area_body_exited(body: Node) -> void:
 		var idx = nearby_destinations.find(destination)
 		if idx != -1:
 			nearby_destinations.remove_at(idx)
+	
+	# Note: We don't need to handle door exit since door entry immediately triggers level transition
 
 # Handle direct collisions between player car and other objects
 func _on_player_body_entered(body: Node) -> void:

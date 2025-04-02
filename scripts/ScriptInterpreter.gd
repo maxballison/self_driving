@@ -82,9 +82,13 @@ func _run_interpreter(indent_level: int) -> void:
 		if line_indent < indent_level:
 			return
 
-		# Highlight the current line in the code editor
-		if code_editor != null and code_editor.has_method("highlight_executing_line"):
-			code_editor.highlight_executing_line(current_line)
+		# Store current line number before incrementing
+		var line_number = current_line
+		
+		# Highlight the current line in the code editor (for most statements)
+		# For wait(), we'll handle highlighting separately
+		if not line.begins_with("wait(") and code_editor != null and code_editor.has_method("highlight_executing_line"):
+			code_editor.highlight_executing_line(line_number)
 
 		current_line += 1
 
@@ -105,7 +109,7 @@ func _run_interpreter(indent_level: int) -> void:
 			var t = get_tree().create_timer(owner.run_delay)
 			await t.timeout
 		elif result == "WAIT":
-			# For wait() function - the function itself contains the await
+			# For wait() function - highlighting is handled by the wait function itself
 			pass
 		elif result == "ERROR":
 			push_error("Error in line: %s" % line)
@@ -243,6 +247,57 @@ func _interpret_stop_statement(line: String) -> bool:
 		push_error("No player assigned to interpreter.")
 		return false
 
+# Helper function to keep a line highlighted for a duration and handle player wait
+func _highlight_line_for_duration(line_number: int, duration: float, player_ref: Node) -> void:
+	if code_editor == null or not code_editor.has_method("highlight_executing_line"):
+		# If no code editor, just wait without highlighting
+		if player_ref:
+			await player_ref.wait(duration)
+		return
+	
+	# Adjust line number to the wait() line (we've already incremented current_line)
+	var wait_line = line_number - 1
+	
+	# Store original caret position and selection in the editor
+	var original_caret_line = code_editor.text_edit.get_caret_line()
+	var original_caret_column = code_editor.text_edit.get_caret_column()
+	var had_selection = code_editor.text_edit.has_selection()
+	var select_from_line = -1
+	var select_from_column = -1
+	var select_to_line = -1
+	var select_to_column = -1
+	
+	if had_selection:
+		select_from_line = code_editor.text_edit.get_selection_from_line()
+		select_from_column = code_editor.text_edit.get_selection_from_column()
+		select_to_line = code_editor.text_edit.get_selection_to_line()
+		select_to_column = code_editor.text_edit.get_selection_to_column()
+	
+	# Apply the highlight color
+	code_editor.text_edit.add_theme_color_override("current_line_color", code_editor.highlight_color)
+	
+	# Move the caret to the wait line to ensure it's visible
+	code_editor.text_edit.set_caret_line(wait_line)
+	
+	# Start the player waiting
+	if player_ref:
+		await player_ref.wait(duration)
+	else:
+		# Fallback if player isn't available
+		await get_tree().create_timer(duration).timeout
+	
+	# Restore original line color only if we're still running
+	if is_running:
+		code_editor.text_edit.add_theme_color_override("current_line_color", code_editor.original_line_color)
+		
+		# Restore original caret position and selection
+		code_editor.text_edit.set_caret_line(original_caret_line)
+		code_editor.text_edit.set_caret_column(original_caret_column)
+		
+		if had_selection:
+			code_editor.text_edit.select(select_from_line, select_from_column, 
+						select_to_line, select_to_column)
+
 # New function to interpret wait() statement
 func _interpret_wait_statement(line: String) -> bool:
 	var inside = _extract_between(line, "wait(", ")")
@@ -268,8 +323,12 @@ func _interpret_wait_statement(line: String) -> bool:
 		return false
 		
 	if player:
-		# Call the player's wait method which has an await inside
-		await player.wait(wait_time)
+		# Keep the line highlighted for the duration of the wait
+		var current_wait_line = current_line
+		
+		# Both highlight the line and wait at the same time
+		await _highlight_line_for_duration(current_wait_line, wait_time, player)
+		
 		return true
 	else:
 		push_error("No player assigned to interpreter.")
