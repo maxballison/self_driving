@@ -1,0 +1,87 @@
+[gd_scene load_steps=11 format=3 uid="uid://bgkwjnwxyx0sb"]
+
+[ext_resource type="Script" path="res://scripts/PassengerPhysics.gd" id="1_script"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.25
+height = 0.8
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 0.25
+height = 0.8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_body"]
+albedo_color = Color(0.2, 0.4, 0.8, 1)
+metallic = 0.1
+roughness = 0.6
+
+[sub_resource type="SphereMesh" id="SphereMesh_head"]
+radius = 0.15
+height = 0.3
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_head"]
+albedo_color = Color(0.85, 0.7, 0.6, 1)
+roughness = 0.7
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_arm"]
+radius = 0.05
+height = 0.4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_arm"]
+albedo_color = Color(0.2, 0.4, 0.8, 1)
+metallic = 0.1
+roughness = 0.6
+
+[sub_resource type="SphereMesh" id="SphereMesh_indicator"]
+radius = 0.15
+height = 0.3
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_indicator"]
+albedo_color = Color(1, 0, 0, 1)
+emission_enabled = true
+emission = Color(1, 0, 0, 1)
+emission_energy_multiplier = 1.2
+
+[node name="SimplePassenger" type="RigidBody3D" groups=["passengers"]]
+collision_layer = 2
+collision_mask = 7
+mass = 70.0
+freeze = true
+freeze_mode = 1
+script = ExtResource("1_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="PassengerModel" type="Node3D" parent="."]
+
+[node name="Body" type="MeshInstance3D" parent="PassengerModel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+mesh = SubResource("CapsuleMesh_body")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_body")
+
+[node name="Head" type="MeshInstance3D" parent="PassengerModel"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+mesh = SubResource("SphereMesh_head")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_head")
+
+[node name="LeftArm" type="MeshInstance3D" parent="PassengerModel"]
+transform = Transform3D(0.866025, 0.5, 0, -0.5, 0.866025, 0, 0, 0, 1, -0.25, 0.8, 0)
+mesh = SubResource("CapsuleMesh_arm")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_arm")
+
+[node name="RightArm" type="MeshInstance3D" parent="PassengerModel"]
+transform = Transform3D(0.866025, -0.5, 0, 0.5, 0.866025, 0, 0, 0, 1, 0.25, 0.8, 0)
+mesh = SubResource("CapsuleMesh_arm")
+skeleton = NodePath("../..")
+surface_material_override/0 = SubResource("StandardMaterial3D_arm")
+
+[node name="DestinationIndicator" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.64773, 0)
+cast_shadow = 0
+mesh = SubResource("SphereMesh_indicator")
+surface_material_override/0 = SubResource("StandardMaterial3D_indicator")

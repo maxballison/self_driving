@@ -1,4 +1,4 @@
-extends Node3D
+extends RigidBody3D
 
 @export var destination_id: int = 0
 @export var passenger_name: String = "Passenger"
@@ -8,13 +8,12 @@ var is_picked_up: bool = false
 var is_delivered: bool = false
 var is_ragdolling: bool = false
 
-# Visual nodes
-var visual_model = null
-var destination_indicator = null
-var ragdoll_body = null 
-
 # Car reference when picked up
 var car_ref: Node3D = null
+
+# Cached references for better performance
+@onready var passenger_model = $PassengerModel
+@onready var destination_indicator = $DestinationIndicator
 
 # Signals
 signal passenger_picked_up(passenger)
@@ -25,34 +24,15 @@ func _ready():
 	# Add to passengers group for easy tracking
 	add_to_group("passengers")
 	
-	# Find components
-	for child in get_children():
-		if (child is MeshInstance3D or child is Node3D) and "ragdoll" not in child.name.to_lower() and "destination" not in child.name.to_lower() and not child is RigidBody3D:
-			visual_model = child
-		
-		if child is MeshInstance3D and "destination" in child.name.to_lower():
-			destination_indicator = child
-			
-		if child is RigidBody3D:
-			ragdoll_body = child
-	
 	# Initialize destination color
 	set_destination_color()
 	
-	# Make sure the rigid body is properly configured for physics
-	if ragdoll_body:
-		ragdoll_body.visible = false
-		ragdoll_body.freeze = true
-		
-		# Set collision layers
-		ragdoll_body.collision_layer = 2  # Layer 2 (passengers)
-		ragdoll_body.collision_mask = 7   # Layers 1, 2, 3 (environment, other passengers, car)
-		
-		# Connect collision signal
-		if not ragdoll_body.is_connected("body_entered", Callable(self, "_on_ragdoll_body_entered")):
-			ragdoll_body.body_entered.connect(_on_ragdoll_body_entered)
-	else:
-		print("WARNING: No ragdoll body found for passenger: ", name)
+	# Initialize frozen state
+	freeze = true
+	
+	# Clear signals and connect our own
+	if not is_connected("body_entered", Callable(self, "_on_body_entered")):
+		body_entered.connect(_on_body_entered)
 
 func _process(delta: float) -> void:
 	# Update indicator position when picked up
@@ -97,9 +77,13 @@ func pick_up(car: Node3D) -> bool:
 	car_ref = car
 	is_picked_up = true
 	
-	# Hide visual model
-	if visual_model:
-		visual_model.visible = false
+	# Hide visual model, freeze physics
+	if passenger_model:
+		passenger_model.visible = false
+	
+	# Disable collision while picked up
+	collision_layer = 0
+	collision_mask = 0
 	
 	emit_signal("passenger_picked_up", self)
 	return true
@@ -114,8 +98,8 @@ func deliver() -> bool:
 	car_ref = null
 	
 	# Hide visual elements
-	if visual_model:
-		visual_model.visible = false
+	if passenger_model:
+		passenger_model.visible = false
 	
 	if destination_indicator:
 		destination_indicator.visible = false
@@ -132,72 +116,66 @@ func activate_ragdoll(car = null, car_direction: int = -1) -> void:
 	is_ragdolling = true
 	car_ref = car
 	
-	# Hide regular model and show ragdoll
-	if visual_model:
-		visual_model.visible = false
+	# Show passenger model in ragdoll mode
+	if passenger_model:
+		passenger_model.visible = true
 	
 	if destination_indicator:
 		destination_indicator.visible = false
 	
-	# Activate ragdoll physics
-	if ragdoll_body:
-		ragdoll_body.visible = true
-		
-		# Calculate force direction - make stronger for more dramatic effect
-		var impulse = Vector3(0, 8, 0)  # Increased upward force
-		
-		if car:
-			# Calculate impulse based on car's position and direction
-			var dir_to_car = global_position.direction_to(car.global_position)
-			
-			# If car_direction is -1, use physical relative positioning
-			if car_direction == -1:
-				# Apply force away from car direction with upward component
-				impulse = -dir_to_car * 20.0 + Vector3(0, 8, 0)  # Increased force
-			else:
-				# Apply force based on car's discrete direction
-				var dir_vec = Vector3.ZERO
-				match car_direction:
-					0: dir_vec = Vector3(0, 0, -1)  # North
-					1: dir_vec = Vector3(1, 0, 0)   # East
-					2: dir_vec = Vector3(0, 0, 1)   # South
-					3: dir_vec = Vector3(-1, 0, 0)  # West
-				
-				impulse = dir_vec * 20.0 + Vector3(0, 8, 0)  # Increased force
-		
-		# Unfreeze physics and apply forces
-		ragdoll_body.freeze = false
-		ragdoll_body.apply_central_impulse(impulse)
-		
-		# Add more random torque for more dramatic tumbling
-		var random_torque = Vector3(
-			randf_range(-2, 2),  # Increased range
-			randf_range(-2, 2),
-			randf_range(-2, 2)
-		).normalized() * 25.0  # Increased torque
-		
-		ragdoll_body.apply_torque(random_torque)
-		
-		# Signal the collision
-		emit_signal("passenger_hit_by_car", self)
-		
-		# DON'T immediately schedule level reset - let physics simulation play out
-		# Instead, let the Player.gd handle this with a proper delay
-	else:
-		print("ERROR: No ragdoll body available for passenger: ", name)
-		
-		# Still try to reset the level even without ragdoll
-		var level_manager = get_node("/root/Main/LevelManager")
-		if level_manager and level_manager.has_method("schedule_level_reset"):
-			level_manager.schedule_level_reset(self)
-
-func _on_ragdoll_body_entered(body) -> void:
-	print("Ragdoll collided with: ", body.name)
+	# Enable physics by unfreezing
+	freeze = false
+	collision_layer = 2
+	collision_mask = 7
 	
-	# Check if this is a secondary collision with the environment
-	if body is StaticBody3D and "floor" not in body.name.to_lower():
-		# Additional effects for wall collisions could be added here
-		pass
+	# Calculate force direction - make stronger for more dramatic effect
+	var impulse = Vector3(0, 10, 0)  # Strong upward force
+	
+	if car:
+		# Calculate impulse based on car's position and direction
+		var dir_to_car = global_position.direction_to(car.global_position)
+		
+		# If car_direction is -1, use physical relative positioning
+		if car_direction == -1:
+			# Apply force away from car direction with upward component
+			impulse = -dir_to_car * 25.0 + Vector3(0, 10, 0)  # Strong force
+		else:
+			# Apply force based on car's discrete direction
+			var dir_vec = Vector3.ZERO
+			match car_direction:
+				0: dir_vec = Vector3(0, 0, -1)  # North
+				1: dir_vec = Vector3(1, 0, 0)   # East
+				2: dir_vec = Vector3(0, 0, 1)   # South
+				3: dir_vec = Vector3(-1, 0, 0)  # West
+			
+			impulse = dir_vec * 25.0 + Vector3(0, 10, 0)  # Strong force
+	
+	# Apply forces - stronger for more dramatic effect
+	apply_central_impulse(impulse)
+	
+	# Add random torque for more dramatic tumbling
+	var random_torque = Vector3(
+		randf_range(-3, 3),  # Increased range
+		randf_range(-3, 3),
+		randf_range(-3, 3)
+	).normalized() * 30.0  # Stronger torque
+	
+	apply_torque(random_torque)
+	
+	# Signal the collision
+	emit_signal("passenger_hit_by_car", self)
+	
+	# DON'T schedule level reset - let the car handle that
+
+func _on_body_entered(body) -> void:
+	# Check if this is a collision with the player
+	if not is_ragdolling and not is_picked_up and not is_delivered:
+		if body.get_parent() and body.get_parent().name == "Player":
+			print("Passenger hit by player car")
+			activate_ragdoll(body.get_parent(), -1)
+		elif body.name == "Player":
+			print("Passenger hit by player car")
+			activate_ragdoll(body, -1)
 
 func update_indicator_position() -> void:
 	if not is_picked_up or not car_ref or not destination_indicator:
@@ -227,17 +205,15 @@ func reset_state() -> void:
 		car_ref = null
 		
 		# Show visual model
-		if visual_model:
-			visual_model.visible = true
+		if passenger_model:
+			passenger_model.visible = true
 		
-		# Reset ragdoll
-		if ragdoll_body:
-			ragdoll_body.visible = false
-			ragdoll_body.freeze = true
-			# Reset physics state
-			ragdoll_body.linear_velocity = Vector3.ZERO
-			ragdoll_body.angular_velocity = Vector3.ZERO
-			ragdoll_body.position = Vector3.ZERO
+		# Reset physics state
+		freeze = true
+		collision_layer = 2
+		collision_mask = 7
+		linear_velocity = Vector3.ZERO
+		angular_velocity = Vector3.ZERO
 		
 		# Reset indicator
 		if destination_indicator:
@@ -252,7 +228,7 @@ func reset_state() -> void:
 			
 			# Make sure indicator is visible and positioned correctly
 			destination_indicator.visible = true
-			destination_indicator.position = Vector3(0, 1.3, 0)
+			destination_indicator.position = Vector3(0, 1.64773, 0)
 			
 			# Reset color
 			set_destination_color()

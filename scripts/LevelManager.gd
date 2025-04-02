@@ -53,11 +53,13 @@ func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1))
 	if current_level_instance.get("start_direction"):
 		level_start_dir = current_level_instance.start_direction
 
-	# Reset passenger states (now done differently due to physics-based system)
+	# Reset passenger states (now done differently for physics-based passengers)
 	var passengers = get_tree().get_nodes_in_group("passengers")
 	for passenger in passengers:
+		print("Found passenger: ", passenger.name, " of type: ", passenger.get_class())
 		if passenger.has_method("reset_state"):
 			passenger.reset_state()
+			print("Reset passenger state for: ", passenger.name)
 
 	# Set up the Player with the new physics-based approach
 	var player = get_node("/root/Main/Player")
@@ -162,54 +164,10 @@ func schedule_level_reset(_passenger = null) -> void:
 	if interpreter:
 		interpreter.is_running = false
 	
-	# Stop the player's movement and reset position immediately
+	# Just stop the player's movement, but DON'T reset position yet
 	var player = get_node("/root/Main/Player")
-	if player:
-		# Get the level's start position or use a default
-		var start_pos = Vector2i(1, 1)
-		var start_dir = 1 # Default direction (East)
-		
-		if current_level_instance:
-			if current_level_instance.has_method("get") or current_level_instance.get("start_position") != null:
-				start_pos = current_level_instance.start_position
-			if current_level_instance.has_method("get") or current_level_instance.get("start_direction") != null:
-				start_dir = current_level_instance.start_direction
-		
-		# Calculate world position
-		var world_position = Vector3(
-			float(start_pos.x) * cell_size,
-			0.5,  # Increased height offset for the car from 0.2 to 0.5
-			float(start_pos.y) * cell_size
-		)
-		
-		# Set player position and stop movement
-		if player.has_method("stop"):
-			player.stop()
-		
-		player.global_position = world_position
-		player.linear_velocity = Vector3.ZERO
-		player.angular_velocity = Vector3.ZERO
-		
-		# Calculate rotation from direction
-		var rotation_y = 0.0
-		match start_dir:
-			0: rotation_y = 0.0        # North
-			1: rotation_y = -PI * 0.5  # East
-			2: rotation_y = -PI        # South
-			3: rotation_y = -PI * 1.5  # West
-		
-		player.rotation.y = rotation_y
-		
-		# Reset the player's physics state
-		if player.has_method("reset_physics_state"):
-			player.reset_physics_state()
-		
-		# Clear any existing passengers
-		if player.has_method("clear_passengers"):
-			player.clear_passengers()
-			
-		# Apply a slight upward impulse to help avoid floor clipping
-		player.apply_central_impulse(Vector3(0, 2.0, 0))
+	if player and player.has_method("stop"):
+		player.stop()
 	
 	# Clean up any orphaned indicators immediately
 	for child in get_tree().root.get_children():
@@ -218,7 +176,7 @@ func schedule_level_reset(_passenger = null) -> void:
 			print("Cleaned up orphaned indicator during reset")
 	
 	# Reset the level after a delay to show the ragdoll effect
-	var timer = get_tree().create_timer(0.5) # Reduced time from 2.0 to 0.5
+	var timer = get_tree().create_timer(2.5) # Increased time to 2.5 seconds for longer ragdoll effect
 	timer.timeout.connect(func():
 		# Clear the reset flag
 		remove_meta("reset_scheduled")

@@ -79,6 +79,11 @@ func _ready() -> void:
 	reset_in_progress = false
 	can_reset = true
 	
+	# Connect direct collision signal
+	contact_monitor = true
+	max_contacts_reported = 4
+	body_entered.connect(_on_player_body_entered)
+	
 	clear_passengers()
 
 func _physics_process(delta: float) -> void:
@@ -385,38 +390,94 @@ func drop_off() -> bool:
 func _on_pickup_area_body_entered(body: Node) -> void:
 	print("Body entered pickup area: ", body.name)
 	
-	# Check if the body is a passenger's ragdoll
-	if body is RigidBody3D and body.get_parent() and body.get_parent().has_method("activate_ragdoll"):
-		var passenger = body.get_parent()
-		print("Passenger detected: ", passenger.name)
-		
-		# Only activate if the passenger is not already picked up or delivered
+	# Better passenger detection logic
+	var passenger = null
+	
+	# Direct passenger detection (main passenger body)
+	if body.has_method("is_passenger"):
+		passenger = body
+	# Fallback for passenger child nodes
+	elif body.get_parent() and body.get_parent().has_method("is_passenger"):
+		passenger = body.get_parent()
+	
+	# Process passenger if found
+	if passenger:
 		if not passenger.is_picked_up and not passenger.is_delivered and not passenger.is_ragdolling:
-			print("Activating passenger ragdoll")
+			print("Adding passenger to nearby passengers list: ", passenger.name)
+			if not nearby_passengers.has(passenger):
+				nearby_passengers.append(passenger)
+	
+	# Handle destinations
+	var destination = null
+	if body.has_method("is_destination"):
+		destination = body
+	elif body.get_parent() and body.get_parent().has_method("is_destination"):
+		destination = body.get_parent()
+	
+	if destination and not nearby_destinations.has(destination):
+		nearby_destinations.append(destination)
+
+func _on_pickup_area_body_exited(body: Node) -> void:
+	# Remove destinations/passengers from the nearby lists when they exit using improved detection
+	
+	# Find passenger using same logic as in body_entered
+	var passenger = null
+	if body.has_method("is_passenger"):
+		passenger = body
+	elif body.get_parent() and body.get_parent().has_method("is_passenger"):
+		passenger = body.get_parent()
+	
+	# Remove passenger if found
+	if passenger:
+		var idx = nearby_passengers.find(passenger)
+		if idx != -1:
+			print("Removing passenger from nearby list: ", passenger.name)
+			nearby_passengers.remove_at(idx)
+	
+	# Find destination using same logic as in body_entered
+	var destination = null
+	if body.has_method("is_destination"):
+		destination = body
+	elif body.get_parent() and body.get_parent().has_method("is_destination"):
+		destination = body.get_parent()
+	
+	# Remove destination if found
+	if destination:
+		var idx = nearby_destinations.find(destination)
+		if idx != -1:
+			nearby_destinations.remove_at(idx)
+
+# Handle direct collisions between player car and other objects
+func _on_player_body_entered(body: Node) -> void:
+	print("Player directly collided with: ", body.name)
+	
+	# Improved passenger detection logic for collisions
+	var passenger = null
+	
+	# Try various ways to find the actual passenger
+	if body.has_method("is_passenger"):
+		# Direct passenger object
+		passenger = body
+	elif body.get_parent() and body.get_parent().has_method("is_passenger"):
+		# Parent is passenger
+		passenger = body.get_parent()
+	elif body.get_parent() and body.get_parent().get_parent() and body.get_parent().get_parent().has_method("is_passenger"):
+		# Grandparent is passenger
+		passenger = body.get_parent().get_parent()
+	
+	if passenger:
+		print("Player hit passenger: ", passenger.name)
+		
+		# Only activate ragdoll if not already in special state
+		if not passenger.is_picked_up and not passenger.is_delivered and not passenger.is_ragdolling:
+			# Activate passenger ragdoll physics
 			passenger.activate_ragdoll(self, -1)
 			emit_signal("passenger_hit", passenger)
 			
-			# Directly call the level manager's reset function
+			# Schedule a level reset (with delay to see physics effects)
 			var level_manager = get_node("/root/Main/LevelManager")
 			if level_manager and level_manager.has_method("schedule_level_reset"):
 				level_manager.schedule_level_reset(passenger)
-	elif body.get_parent() and body.get_parent().has_method("is_passenger"):
-		# If this is a passenger, add it to nearby passengers
-		nearby_passengers.append(body.get_parent())
-	elif body.get_parent() and body.get_parent().has_method("is_destination"):
-		# If this is a destination, add it to nearby destinations
-		nearby_destinations.append(body.get_parent())
-
-func _on_pickup_area_body_exited(body: Node) -> void:
-	# Remove destinations/passengers from the nearby lists when they exit
-	if body.get_parent() and body.get_parent().has_method("is_passenger"):
-		var idx = nearby_passengers.find(body.get_parent())
-		if idx != -1:
-			nearby_passengers.remove_at(idx)
-	elif body.get_parent() and body.get_parent().has_method("is_destination"):
-		var idx = nearby_destinations.find(body.get_parent())
-		if idx != -1:
-			nearby_destinations.remove_at(idx)
 
 # UTILITY FUNCTIONS
 
