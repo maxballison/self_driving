@@ -559,8 +559,15 @@ func reset_physics_state() -> void:
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
 	
+	# Force upright orientation, keeping only Y rotation
+	var current_y_rotation = rotation.y
+	rotation = Vector3(0, current_y_rotation, 0)
+	
 	# Update direction based on rotation (important after teleporting)
 	update_direction_from_rotation()
+	
+	# Apply a small upward impulse to prevent floor clipping
+	apply_central_impulse(Vector3(0, 1.0, 0))
 	
 	print("Player physics state has been reset")
 
@@ -604,12 +611,22 @@ func check_level_completion() -> void:
 		# Transition to next level if available
 		if current_level.has_method("get") and current_level.get("next_level_path") != "":
 			var next_level = current_level.next_level_path
+			
+			# Make sure the path is properly formatted with "res://" prefix if needed
+			if not next_level.begins_with("res://") and not next_level.begins_with("/"):
+				next_level = "res://GeneratedLevels/" + next_level
+			
+			print("Next level path: ", next_level)
+			
 			var transition_delay = 2.0
 			
 			if current_level.has_method("get") and current_level.get("transition_delay") > 0:
 				transition_delay = current_level.transition_delay
 			
+			print("Level completion - scheduling transition to " + next_level + " in " + str(transition_delay) + " seconds")
+			
 			var timer = get_tree().create_timer(transition_delay)
 			timer.timeout.connect(func():
+				print("Level transition timer expired, emitting door_entered signal")
 				emit_signal("door_entered", next_level, Vector2i(1, 1))
 			)

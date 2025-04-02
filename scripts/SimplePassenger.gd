@@ -141,10 +141,13 @@ func activate_ragdoll(car = null, car_direction: int = -1) -> void:
 		print("Hiding destination indicator")
 		destination_indicator.visible = false
 	
-	# Make sure passenger model remains visible
+	# Make sure passenger model remains visible and correctly positioned
 	if passenger_model:
 		passenger_model.visible = true
 		print("Ensuring passenger model is visible for ragdoll")
+		
+	# Make sure we're visible at the node level too
+	visible = true
 	
 	# Calculate force direction - make even stronger for more dramatic effect
 	var impulse = Vector3(0, 15, 0)  # Strong upward force
@@ -173,6 +176,11 @@ func activate_ragdoll(car = null, car_direction: int = -1) -> void:
 	# Apply forces - even stronger for more dramatic effect
 	print("Applying impulse: ", impulse)
 	apply_central_impulse(impulse)
+	
+	# Ensure we're unfrozen and visible
+	freeze = false
+	visible = true
+	freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
 	
 	# Add random torque for more dramatic tumbling
 	var random_torque = Vector3(
@@ -278,6 +286,9 @@ func reset_state() -> void:
 		collision_mask = 7
 		linear_velocity = Vector3.ZERO
 		angular_velocity = Vector3.ZERO
+		
+		# Reset position
+		rotation = Vector3.ZERO
 		
 		# Reset indicator
 		if destination_indicator:

@@ -8,7 +8,7 @@ var cell_size: float = 1.0
 signal level_switched()
 
 func _ready() -> void:
-	load_level("res://GeneratedLevels/level_3.tscn")
+	load_level("res://GeneratedLevels/level_1.tscn")
 
 func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1)) -> void:
 	print("Loading level: ", scene_path)
@@ -79,10 +79,13 @@ func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1))
 				float(spawn_position.y) * cell_size
 			)
 		
-		# Set player position and rotation directly
+		# Reset player rotation first, to ensure it's upright
+		player.rotation = Vector3(0, 0, 0)
+		
+		# Set player position
 		player.position = world_position
 		
-		# Calculate rotation from direction
+		# Calculate rotation from direction (ONLY Y rotation)
 		var rotation_y = 0.0
 		match level_start_dir:
 			0: rotation_y = 0.0        # North
@@ -90,7 +93,8 @@ func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1))
 			2: rotation_y = -PI        # South
 			3: rotation_y = -PI * 1.5  # West
 		
-		player.rotation.y = rotation_y
+		# Only set Y rotation to keep the car upright
+		player.rotation = Vector3(0, rotation_y, 0)
 		
 		# Ensure direction vector is updated from rotation
 		if player.has_method("update_direction_from_rotation"):
@@ -139,6 +143,16 @@ func _connect_player_signals(player: Node3D) -> void:
 
 func _on_player_door_entered(next_level_path: String, _unused_spawn: Vector2i) -> void:
 	print("Door entered, switching to level: ", next_level_path)
+	
+	# Make sure the path is properly formatted
+	if not next_level_path.begins_with("res://") and not next_level_path.begins_with("/"):
+		next_level_path = "res://GeneratedLevels/" + next_level_path
+	
+	# Ensure the path exists
+	if not ResourceLoader.exists(next_level_path):
+		push_error("Next level path does not exist: " + next_level_path)
+		return
+		
 	# Switch to the next level, using its own start position
 	load_level(next_level_path)
 

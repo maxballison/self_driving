@@ -1,6 +1,6 @@
 [gd_scene load_steps=11 format=3 uid="uid://bgkwjnwxyx0sb"]
 
-[ext_resource type="Script" path="res://scripts/PassengerPhysics.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/SimplePassenger.gd" id="1_script"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.25
