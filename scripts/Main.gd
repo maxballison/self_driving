@@ -46,6 +46,17 @@ func _ready():
 	if enable_sounds:
 		_setup_audio_players()
 	
+	# Create a reset button
+	var reset_button = Button.new()
+	reset_button.name = "ResetButton"
+	reset_button.text = "Reset Level"
+	reset_button.size = Vector2(120, 40)
+	reset_button.position = Vector2(20, get_viewport().size.y - 60)
+	add_child(reset_button)
+	
+	# Connect the button's pressed signal
+	reset_button.pressed.connect(Callable(self, "_on_reset_button_pressed"))
+	
 	# Debug info
 	print("Main scene initialized")
 	print("Tutorial window position: ", tutorial_window.position)
@@ -140,3 +151,9 @@ func _shake_camera(intensity: float = 0.3):
 		tween.tween_property(camera, "position", original_pos, 0.1)
 		tween.tween_property(camera, "position", original_pos + Vector3(randf_range(-0.5, 0.5), randf_range(-0.3, 0.3), randf_range(-0.5, 0.5)) * intensity * 0.7, 0.1)
 		tween.tween_property(camera, "position", original_pos, 0.1)
+
+# Handler for the reset button
+func _on_reset_button_pressed() -> void:
+	if level_manager and level_manager.has_method("schedule_level_reset"):
+		level_manager.schedule_level_reset()
+		print("Level reset requested from button")

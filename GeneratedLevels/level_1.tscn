@@ -9,6 +9,7 @@
 script = ExtResource("1_s11tu")
 grid_width = 8
 grid_height = 3
+next_level_path = "res://GeneratedLevels/level_2.tscn"
 
 [node name="TileWall_0" parent="." instance=ExtResource("3_3tm3l")]
 

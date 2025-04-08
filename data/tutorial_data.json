@@ -1,36 +1,36 @@
 {
   "res://GeneratedLevels/level_1.tscn": [
 	"[b]Welcome to the Self-Driving Taxi Adventure![/b]\n\nIn this game, you'll write code to control your taxi and navigate through various challenges.",
-	"Use the [color=#80CCFF]Code Editor[/color] to write instructions for your taxi.\n\nThe basic movement commands are:\n[code]drive()[/code] - Move forward in the direction you're facing\n[code]turn_left()[/code] - Rotate 90° counter-clockwise\n[code]turn_right()[/code] - Rotate 90° clockwise",
-	"Try writing a simple program to move your taxi:\n[code]drive()\nturn_right()\ndrive()[/code]\n\nThen click the [color=#80FF80]Run[/color] button to execute your code.",
+	"Use the [color=#80CCFF]Code Editor[/color] to write instructions for your taxi.\n\nThe basic movement command is:\n[code]drive()[/code] - Move forward in the direction you're facing",
+	"Try writing a simple program to move your taxi:\n[code]drive()[/code]\n\nThen click the [color=#80FF80]Run[/color] button to execute your code.",
 	"Watch carefully as each line executes! The current command being run will briefly highlight in the editor.\n\nYour goal is to reach the door at the end of the level. Good luck!"
   ],
   
   "res://GeneratedLevels/level_2.tscn": [
-	"[b]Level 2: Passengers & Destinations[/b]\n\nIn this level, you'll learn to pick up passengers and drop them off at their destinations.",
+	"[b]Level 2: Passengers & Timing[/b]\n\nIn this level, you'll learn to pick up passengers and use the [code]wait()[/code] command for timing.",
 	"When a passenger is nearby, you can use:\n[code]pick_up()[/code]\n\nThe passenger will be loaded into your taxi, and a colored indicator will appear above your taxi showing their destination.",
-	"Drive to the matching colored destination and use:\n[code]drop_off()[/code]\n\nThis will deliver the passenger to their destination.",
-	"Be careful not to hit passengers with your taxi! If you collide with a passenger, the level will restart and your code execution will stop.\n\nTry this sequence:\n[code]drive()\npick_up()\ndrive()\ndrive()\ndrop_off()[/code]"
+	"The [code]wait(seconds)[/code] command pauses execution for the specified number of seconds.\n\nFor example:\n[code]drive()\nwait(1)\ndrive()[/code]",
+	"Drive to the matching colored destination and use:\n[code]drop_off()[/code]\n\nTry this sequence:\n[code]drive()\npick_up()\nwait(0.5)\ndrive()\ndrop_off()[/code]"
   ],
   
   "res://GeneratedLevels/level_3.tscn": [
-	"[b]Level 3: For Loops[/b]\n\nThis level introduces loops to make your code more efficient and handle repetitive tasks.",
-	"Instead of writing the same command multiple times, you can use a [color=#80CCFF]for loop[/color]:\n[code]for i in range(5):\n    drive()[/code]\n\nThis will run the [code]drive()[/code] command 5 times.",
-	"You can put any commands inside a loop, including turns:\n[code]for i in range(3):\n    drive()\n    turn_right()[/code]\n\nNotice how indentation (spaces at the start of the line) is important to define what's inside the loop.",
-	"Loops are perfect for navigating the longer corridor in this level. Try to combine loops with pickup and drop-off commands to deliver your passenger efficiently."
+	"[b]Level 3: Changing Direction[/b]\n\nThis level introduces turning to change your taxi's direction.",
+	"Use these commands to rotate your taxi:\n[code]turn_left()[/code] - Rotate 90° counter-clockwise\n[code]turn_right()[/code] - Rotate 90° clockwise",
+	"Try combining driving and turning to navigate this level:\n[code]drive()\nturn_right()\ndrive()\nturn_left()\ndrive()[/code]",
+	"Remember that after turning, [code]drive()[/code] will move in your new direction. Plan your route carefully to reach the destination!"
   ],
   
   "res://GeneratedLevels/level_4.tscn": [
-	"[b]Level 4: The Challenge[/b]\n\nThis level is a challenge to test your skills. You'll need to apply everything you've learned so far.",
+	"[b]Level 4: Navigation Challenge[/b]\n\nThis level is more complex and requires careful planning.",
+	"Remember all the commands you've learned:\n[code]drive()[/code] - Move forward\n[code]turn_left()[/code] - Rotate left\n[code]turn_right()[/code] - Rotate right\n[code]wait(seconds)[/code] - Wait for a duration",
 	"The layout is more complex, requiring careful navigation. Plan your route before writing your code.",
-	"Remember these tips:\n- Break down the problem into smaller steps\n- Use loops for repeated movements\n- Be careful around corners\n- Position your taxi precisely next to passengers for pickup",
-	"If you get stuck, try sketching the path on paper first, then translate it into code. There are multiple ways to solve this challenge!"
+	"If you get stuck, try breaking down the problem into smaller steps. Testing sections of your route before combining them can help solve tricky navigation challenges."
   ],
   
   "res://GeneratedLevels/level_5.tscn": [
 	"[b]Level 5: Multiple Passengers[/b]\n\nNow you'll deal with multiple passengers and destinations simultaneously.",
 	"Your taxi can hold multiple passengers at once. Each passenger has their own colored indicator showing their destination.",
 	"When you have multiple passengers, make sure to drop each one at their matching colored destination.\n\nNote that the [code]drop_off()[/code] command will only work if you have a passenger whose destination matches one nearby.",
-	"Try to plan an efficient route that picks up and delivers all passengers with minimum driving distance.\n\nConsider creating a function to organize your code better:\n[code]func go_to_position(x, y):\n    # Your navigation code here[/code]"
+	"Try to plan an efficient route that picks up and delivers all passengers with minimum driving distance."
   ]
 }
