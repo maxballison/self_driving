@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3 uid="uid://x5qxel6t55b7"]
+[gd_scene load_steps=3 format=3 uid="uid://x5qxel6t55b7"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_u4paj"]
 size = Vector3(1, 0.02, 1)
@@ -7,18 +7,8 @@ size = Vector3(1, 0.02, 1)
 albedo_color = Color(0.15, 0.15, 0.15, 1)
 roughness = 0.7
 
-[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
-size = Vector3(1, 0.1, 1)
-
 [node name="Tile" type="Node3D" groups=["floor", "road"]]
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="."]
 mesh = SubResource("BoxMesh_u4paj")
 surface_material_override/0 = SubResource("StandardMaterial3D_3fwr6")
-
-[node name="FloorCollision" type="StaticBody3D" parent="." groups=["floor", "road"]]
-collision_mask = 7
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="FloorCollision"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.05, 0)
-shape = SubResource("BoxShape3D_floor")

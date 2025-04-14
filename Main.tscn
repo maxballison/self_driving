@@ -12,7 +12,7 @@
 
 [node name="Main" type="Node"]
 script = ExtResource("1_q1sdt")
-run_delay = 0.05
+run_delay = 0.15
 
 [node name="LevelManager" type="Node3D" parent="."]
 script = ExtResource("6_060nv")

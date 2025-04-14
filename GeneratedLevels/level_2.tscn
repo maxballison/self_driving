@@ -10,6 +10,7 @@
 script = ExtResource("1_m815a")
 grid_width = 6
 grid_height = 3
+show_collision_debug = true
 next_level_path = "res://GeneratedLevels/level_3.tscn"
 
 [node name="TileFloor_3_0" parent="." instance=ExtResource("5_wm7u2")]
