@@ -1,14 +1,14 @@
 [gd_scene load_steps=10 format=3 uid="uid://cjmbgk030pk6g"]
 
-[ext_resource type="Script" path="res://scripts/Main.gd" id="1_q1sdt"]
+[ext_resource type="Script" uid="uid://db7fcybrjwpjp" path="res://scripts/Main.gd" id="1_q1sdt"]
 [ext_resource type="PackedScene" uid="uid://b3oijswa6a50w" path="res://world_environment.tscn" id="3_gg6vl"]
-[ext_resource type="Script" path="res://scripts/ScriptInterpreter.gd" id="3_qfnpw"]
+[ext_resource type="Script" uid="uid://c32n6jjodbm68" path="res://scripts/ScriptInterpreter.gd" id="3_qfnpw"]
 [ext_resource type="PackedScene" uid="uid://bm4kef2fvrw2n" path="res://Player.tscn" id="5_e4uym"]
-[ext_resource type="Script" path="res://scripts/LevelManager.gd" id="6_060nv"]
+[ext_resource type="Script" uid="uid://cp8gmmnkui80p" path="res://scripts/LevelManager.gd" id="6_060nv"]
 [ext_resource type="PackedScene" uid="uid://lgdcjq8scpdh" path="res://CodeEditorImproved.tscn" id="6_ndsxb"]
 [ext_resource type="PackedScene" uid="uid://d1ctm821wa3np" path="res://TutorialWindow.tscn" id="6_vhwd6"]
 [ext_resource type="PackedScene" uid="uid://bsbj77waho1rq" path="res://MovingBackground.tscn" id="8_t66kt"]
-[ext_resource type="Script" path="res://scripts/camera.gd" id="9_75huk"]
+[ext_resource type="Script" uid="uid://bb3yc4m8u4hrf" path="res://scripts/camera.gd" id="9_75huk"]
 
 [node name="Main" type="Node"]
 script = ExtResource("1_q1sdt")

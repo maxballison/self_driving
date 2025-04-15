@@ -10,6 +10,13 @@ var turn_queued: bool = false
 var can_reset: bool = true
 var is_grounded: bool = false # Track if car is on the ground
 
+# New driving mechanics
+var target_distance: float = 0.0  # Distance the car aims to travel
+var current_drive_units: int = 0  # Number of drive commands issued
+var unit_distance: float = 1.0  # One "unit" of distance
+var natural_friction: float = 0.2  # Even less friction (was 0.3)
+var last_grounded_position: Vector3 = Vector3.ZERO # Track last known good position
+
 # Direction vector (normalized)
 var current_direction: Vector3 = Vector3(0, 0, -1)  # Forward direction
 
@@ -22,6 +29,11 @@ var current_passengers: Array = []
 var max_passengers: int = 3
 var nearby_passengers: Array = []
 var nearby_destinations: Array = []
+
+# Debug variables
+var debug_stop_reason: String = ""
+var last_velocity: Vector3 = Vector3.ZERO
+var velocity_changed_abruptly: bool = false
 
 # References to components
 @onready var pickup_area = $PassengerPickupArea
@@ -43,33 +55,30 @@ func _ready() -> void:
 	# Set initial direction based on rotation
 	update_direction_from_rotation()
 	
+	# Create a physics material with low friction
+	var physics_mat = PhysicsMaterial.new()
+	physics_mat.friction = 0.01  # Extremely low friction for better sliding
+	physics_mat.bounce = 0.1    # Slight bounce
+	physics_material_override = physics_mat
+	
 	# Initialize physics
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
 	
+	# Record initial position as the first grounded position
+	last_grounded_position = global_position
+	
 	# Enable wheel raycasts for ground detection
-	if wheel_ray_fl:
-		wheel_ray_fl.enabled = true
-		wheel_ray_fl.target_position = Vector3(0, -0.5, 0)
-	if wheel_ray_fr:
-		wheel_ray_fr.enabled = true
-		wheel_ray_fr.target_position = Vector3(0, -0.5, 0)
-	if wheel_ray_bl:
-		wheel_ray_bl.enabled = true
-		wheel_ray_bl.target_position = Vector3(0, -0.5, 0)
-	if wheel_ray_br:
-		wheel_ray_br.enabled = true
-		wheel_ray_br.target_position = Vector3(0, -0.5, 0)
+	for ray in [wheel_ray_fl, wheel_ray_fr, wheel_ray_bl, wheel_ray_br]:
+		if ray:
+			ray.enabled = true
+			ray.target_position = Vector3(0, -0.6, 0)  # Slightly longer raycast
 	
 	# Connect pickup area signals
 	if pickup_area:
 		# Set collision layer/mask for pickup area
-		# Layer 4 for pickup area + detect passengers (layer 2), destinations (layer 8), and doors (layer 16)
 		pickup_area.collision_layer = 4     # Layer 3 (player pickup area)
 		pickup_area.collision_mask = 26     # Layers 2 (passengers) + 8 (destinations) + 16 (doors)
-		
-		print("Configured player pickup area with layer: ", pickup_area.collision_layer, 
-			  " and mask: ", pickup_area.collision_mask)
 		
 		if not pickup_area.is_connected("body_entered", Callable(self, "_on_pickup_area_body_entered")):
 			pickup_area.connect("body_entered", Callable(self, "_on_pickup_area_body_entered"))
@@ -93,9 +102,45 @@ func _ready() -> void:
 	clear_passengers()
 
 func _physics_process(delta: float) -> void:
+	# Store previous velocity to detect sudden changes
+	var prev_velocity = linear_velocity
+	
 	# Check if car is grounded and get wheel contact info
 	var wheel_info = _check_grounded_detailed()
+	var was_grounded = is_grounded
 	is_grounded = wheel_info.grounded
+	
+	# Update last good position if grounded
+	if is_grounded:
+		last_grounded_position = global_position
+	
+	# Check for abrupt velocity changes
+	if prev_velocity.length() > 1.0 and linear_velocity.length() < 0.2 and not turn_in_progress:
+		velocity_changed_abruptly = true
+		debug_stop_reason = "Velocity dropped suddenly: " + str(prev_velocity.length()) + " to " + str(linear_velocity.length())
+		# Apply a small impulse in the direction we were moving to overcome small obstacles
+		apply_central_impulse(prev_velocity.normalized() * 1.0)
+	else:
+		velocity_changed_abruptly = false
+	
+	# Apply natural friction when grounded to slow down car naturally
+	if is_grounded and not turn_in_progress:
+		# Calculate current forward velocity and lateral velocity
+		var forward_velocity = current_direction.dot(linear_velocity)
+		var lateral_velocity = linear_velocity - current_direction * forward_velocity
+		
+		# Apply gentler lateral friction (allow more sliding)
+		if lateral_velocity.length() > 0.2:
+			# Reduced lateral friction by lowering force multiplier
+			apply_central_force(-lateral_velocity.normalized() * lateral_velocity.length() * 0.3)
+		
+		# Apply very gradual forward friction
+		if forward_velocity > 0.2:  # Only apply friction when moving
+			var friction_force = -current_direction * forward_velocity * natural_friction * delta * 60.0
+			apply_central_force(friction_force)
+		elif abs(forward_velocity) < 0.02:  # Extremely low threshold for stopping completely
+			# Instead of zeroing velocity, just apply a very tiny slowdown
+			linear_velocity *= 0.95
 	
 	# Detect if car is at an edge (some wheels on ground, some not)
 	var at_edge = wheel_info.wheels_on_ground > 0 and wheel_info.wheels_on_ground < 4
@@ -134,43 +179,32 @@ func _physics_process(delta: float) -> void:
 			apply_torque(Vector3(0, 0, 5.0))
 	else:
 		# Completely in air - full physics, but with slight auto-leveling
-		# This prevents wild spinning while still looking realistic
 		if abs(rotation.x) > 0.8 or abs(rotation.z) > 0.8:
 			# Apply gentle self-righting torque
 			var correction_x = -rotation.x * 2.0
 			var correction_z = -rotation.z * 2.0
 			apply_torque(Vector3(correction_x, 0, correction_z))
 	
-	# Apply continuous driving force if needed (only when grounded)
-	if is_driving and not turn_in_progress:
-		# Ensure ground check is done each frame
-		is_grounded = _check_grounded()
-		
-		if is_grounded:
-			# Calculate current forward velocity
-			var forward_velocity = current_direction.dot(linear_velocity)
-			
-			# Only apply force if below max speed
-			if forward_velocity < max_velocity:
-				# Apply less force as we approach max speed
-				var speed_factor = clamp(1.0 - (forward_velocity / max_velocity), 0.1, 1.0)
-				# Increased force multiplier for better acceleration
-				apply_central_force(current_direction * move_speed * 60.0 * speed_factor)
-				
-				# Debug output to verify driving state
-				if Engine.get_physics_frames() % 60 == 0:  # Print only occasionally to avoid spam
-					print("Driving active - velocity: ", forward_velocity, " max: ", max_velocity)
-	
 	# Process turn queue if needed
 	if turn_queued and not turn_in_progress:
 		turn_queued = false
 		_perform_turn()
 	
-	# Check for falling below threshold (with additional protection against multiple resets)
+	# Check for falling below threshold
 	if position.y < fall_threshold and can_reset and not reset_in_progress:
 		_handle_fall()
+	
+	# Debug output occasionally
+	if Engine.get_physics_frames() % 60 == 0:
+		print("Velocity: ", linear_velocity.length(), " | Grounded: ", is_grounded, 
+			  " | Wheels: ", wheel_info.wheels_on_ground)
+		if velocity_changed_abruptly:
+			print("STOP DETECTED: ", debug_stop_reason)
+	
+	# Store current velocity for next frame comparison
+	last_velocity = linear_velocity
 
-# Simplified ground check (for compatibility with existing code)
+# Simplified ground check
 func _check_grounded() -> bool:
 	var info = _check_grounded_detailed()
 	return info.grounded
@@ -217,33 +251,24 @@ func _check_grounded_detailed() -> Dictionary:
 			result.right_wheels_on_ground += 1
 			result.wheel_br = true
 		
-		# Print detailed ground status occasionally for debugging
-		if Engine.get_physics_frames() % 120 == 0:  # Every ~2 seconds
-			print("Wheels on ground: ", result.wheels_on_ground, "/4 - ",
-				  "F:", result.front_wheels_on_ground, "/2, ",
-				  "B:", result.back_wheels_on_ground, "/2, ",
-				  "L:", result.left_wheels_on_ground, "/2, ",
-				  "R:", result.right_wheels_on_ground, "/2")
-		
-		# Consider the car grounded if at least 2 wheels are touching the ground
-		result.grounded = result.wheels_on_ground >= 2
+		# Consider the car grounded if at least 1 wheel is touching the ground (was 2)
+		result.grounded = result.wheels_on_ground >= 1
 	else:
 		# Fallback to direct raycast if wheel rays aren't available
-		var ray_length = 0.4 # Adjust based on car height
+		var ray_length = 0.4
 		var space_state = get_world_3d().direct_space_state
 		
-		# Create a query for the raycast
 		var query = PhysicsRayQueryParameters3D.create(
 			global_position,
 			global_position + Vector3(0, -ray_length, 0),
-			1, # Collision mask (Layer 1)
-			[get_rid()] # Exclude self
+			1,
+			[get_rid()]
 		)
 		
 		var query_result = space_state.intersect_ray(query)
 		result.grounded = not query_result.is_empty()
 		if result.grounded:
-			result.wheels_on_ground = 4 # Simplification when using central ray
+			result.wheels_on_ground = 4
 			result.front_wheels_on_ground = 2
 			result.back_wheels_on_ground = 2
 			result.left_wheels_on_ground = 2
@@ -256,91 +281,93 @@ func _check_grounded_detailed() -> Dictionary:
 	return result
 
 func update_direction_from_rotation() -> void:
-	# Calculate direction vector from rotation
 	current_direction = Vector3(0, 0, -1).rotated(Vector3.UP, rotation.y).normalized()
-	print("Direction updated: ", current_direction)
 
-# Actually perform the turn
+# Perform turn
 func _perform_turn() -> void:
 	if turn_in_progress:
 		return
 	
 	turn_in_progress = true
 	
-	# Store current driving state
-	var was_driving = is_driving
-	is_driving = false
+	# Store current velocity magnitude for restoration after turn
+	var current_speed = linear_velocity.length()
 	
-	# Apply braking force for stability
-	var brake_force = -linear_velocity * 8.0
+	# Apply gentler braking force for more slide during turns
+	var brake_force = -linear_velocity * 2.0  # Even gentler braking
 	apply_central_force(brake_force)
 	
 	# Rotate based on direction
 	rotation.y += PI/2 * turn_direction
 	update_direction_from_rotation()
 	
-	# Apply impulse in new direction if grounded
+	# Apply impulse in new direction proportional to previous speed
 	if is_grounded:
-		apply_central_impulse(current_direction * move_speed * 0.3)
+		var turn_impulse = min(current_speed * 0.7, move_speed * 0.2)
+		apply_central_impulse(current_direction * turn_impulse)
 	
-	# Schedule turn completion
-	var timer = get_tree().create_timer(0.1)
-	await timer.timeout
-	
-	# Turn is done
+	# Complete turn after a short delay
+	await get_tree().create_timer(0.15)
 	turn_in_progress = false
-	is_driving = was_driving
-	
-	print("Turn completed")
 
 # COMMAND FUNCTIONS
 
 func drive() -> void:
-	is_driving = true
-	
 	# Force immediate ground check
 	is_grounded = _check_grounded()
 	
 	# Only apply impulse if grounded
 	if is_grounded:
-		# Apply initial impulse to get moving immediately
-		# Increased impulse multiplier for better initial movement
-		apply_central_impulse(current_direction * move_speed * 0.8)
-		print("Car started driving continuously (grounded)")
+		# Calculate current forward velocity
+		var forward_velocity = current_direction.dot(linear_velocity)
+		
+		# Increment drive units
+		current_drive_units += 1
+		target_distance = current_drive_units * unit_distance
+		
+		# Calculate impulse strength based on current velocity
+		var impulse_strength = move_speed * 1
+		
+		# Reduce impulse if approaching max speed
+		if forward_velocity > max_velocity * 0.6:
+			impulse_strength *= (1.0 - (forward_velocity / max_velocity))
+		
+		# Apply impulse for discrete movement
+		apply_central_impulse(current_direction * impulse_strength)
+		print("Car moving forward - impulse applied, drive units: ", current_drive_units)
 	else:
-		# Even if not grounded now, keep driving flag on for when we touch ground
-		print("Car started driving mode, but waiting for ground contact")
+		# If recently grounded but now airborne, still try to move
+		var time_since_impulse = get_tree().get_frames() % 10
+		if time_since_impulse < 5 and (global_position - last_grounded_position).length() < 1.0:
+			apply_central_impulse(current_direction * move_speed * 0.4)
+			print("Car moving in air from recent ground contact")
+		else:
+			print("Car not grounded - cannot move forward")
 
 func stop() -> void:
-	if not is_driving:
-		return
-		
-	is_driving = false
-	
-	# Apply braking force
-	var brake_force = -linear_velocity.normalized() * linear_velocity.length() * 10.0
+	# Apply lighter braking force for more gradual stops
+	var brake_force = -linear_velocity.normalized() * linear_velocity.length() * 4.0
 	apply_central_force(brake_force)
-	print("Car stopped")
+	
+	# Reset drive units
+	current_drive_units = 0
+	target_distance = 0.0
+	print("Car slowing down - drive units reset")
 
 func turn_left() -> void:
-	# Queue a left turn
 	turn_direction = 1
 	turn_queued = true
 	print("Turn left queued")
 
 func turn_right() -> void:
-	# Queue a right turn
 	turn_direction = -1
 	turn_queued = true
 	print("Turn right queued")
 
 func wait(seconds: float) -> void:
-	# The wait function should only pause script execution without changing the car's movement
-	
 	print("Waiting for ", seconds, " seconds")
 	await get_tree().create_timer(seconds).timeout
-	
-	print("Wait complete, continuing script execution")
+	print("Wait complete")
 
 func pick_up() -> bool:
 	if current_passengers.size() >= max_passengers:
@@ -490,12 +517,20 @@ func _on_pickup_area_body_exited(body: Node) -> void:
 		var idx = nearby_destinations.find(destination)
 		if idx != -1:
 			nearby_destinations.remove_at(idx)
-	
-	# Note: We don't need to handle door exit since door entry immediately triggers level transition
 
 # Handle direct collisions between player car and other objects
 func _on_player_body_entered(body: Node) -> void:
 	print("Player directly collided with: ", body.name)
+	
+	# If we're moving at a reasonable speed, apply a small bounce impulse
+	if linear_velocity.length() > 1.0:
+		# Calculate bounce direction - away from collision point
+		var bounce_dir = global_position - body.global_position
+		bounce_dir.y = 0  # Keep bounce horizontal
+		bounce_dir = bounce_dir.normalized()
+		
+		# Apply a small bounce impulse
+		apply_central_impulse(bounce_dir * 2.0)
 	
 	# Improved passenger detection logic for collisions
 	var passenger = null
@@ -546,9 +581,6 @@ func _handle_fall() -> void:
 	can_reset = false
 	reset_in_progress = true
 	
-	# Don't immediately halt movement - let physics play out
-	# We'll reset after a delay to show the falling animation
-	
 	# Apply a slight random spin for more dramatic falling effect
 	var random_torque = Vector3(
 		randf_range(-3.0, 3.0),
@@ -579,6 +611,10 @@ func reset_physics_state() -> void:
 	reset_in_progress = false
 	can_reset = true
 	
+	# Reset drive units counter
+	current_drive_units = 0
+	target_distance = 0.0
+	
 	# Reset velocities
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
@@ -592,6 +628,13 @@ func reset_physics_state() -> void:
 	
 	# Apply a small upward impulse to prevent floor clipping
 	apply_central_impulse(Vector3(0, 1.0, 0))
+	
+	# Update last grounded position
+	last_grounded_position = global_position
+	
+	# Reset debug variables
+	debug_stop_reason = ""
+	velocity_changed_abruptly = false
 	
 	print("Player physics state has been reset")
 
@@ -640,17 +683,12 @@ func check_level_completion() -> void:
 			if not next_level.begins_with("res://") and not next_level.begins_with("/"):
 				next_level = "res://GeneratedLevels/" + next_level
 			
-			print("Next level path: ", next_level)
-			
 			var transition_delay = 2.0
 			
 			if current_level.has_method("get") and current_level.get("transition_delay") > 0:
 				transition_delay = current_level.transition_delay
 			
-			print("Level completion - scheduling transition to " + next_level + " in " + str(transition_delay) + " seconds")
-			
 			var timer = get_tree().create_timer(transition_delay)
 			timer.timeout.connect(func():
-				print("Level transition timer expired, emitting door_entered signal")
 				emit_signal("door_entered", next_level, Vector2i(1, 1))
 			)

@@ -1,6 +1,6 @@
 [gd_scene load_steps=15 format=3 uid="uid://crnlf1pmydvva"]
 
-[ext_resource type="Script" path="res://scripts/PassengerPhysics.gd" id="1_direct"]
+[ext_resource type="Script" uid="uid://t18ysyrg0au2" path="res://scripts/PassengerPhysics.gd" id="1_direct"]
 [ext_resource type="PackedScene" uid="uid://x5qxel6t55b7" path="res://tiles/TileEmpty.tscn" id="2_l8420"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_head"]

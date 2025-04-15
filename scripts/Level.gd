@@ -3,11 +3,7 @@ extends Node3D
 @export var grid_width: int = 10
 @export var grid_height: int = 10
 @export var cell_size: float = 1.0
-
-# Add these export variables to Level.gd
-@export var generate_unified_collision: bool = true
-@export var show_collision_debug: bool = false
-@export var debug_color: Color = Color(0.0, 1.0, 0.0, 0.4)  # Semi-transparent green
+  # Semi-transparent green
 
 # Add exported variables for the next level
 @export var next_level_path: String = ""
@@ -29,9 +25,6 @@ extends Node3D
 
 func _ready() -> void:
 	populate_tile_data_and_entities()
-
-	if generate_unified_collision:
-		generate_floor_collision()
 
 
 
@@ -94,134 +87,3 @@ func populate_tile_data_and_entities() -> void:
 	print("- ", passenger_map.size(), " passengers")
 	print("- ", destination_map.size(), " destinations")
 	
-
-func generate_floor_collision() -> void:
-	if not generate_unified_collision:
-		print("Unified collision generation disabled.")
-		return
-		
-	print("Generating unified floor collision...")
-	
-	# Clean up any existing collision and debug nodes
-	var existing = get_node_or_null("UnifiedFloorCollision")
-	if existing:
-		existing.queue_free()
-	
-	var existing_debug = get_node_or_null("DebugContainer")
-	if existing_debug:
-		existing_debug.queue_free()
-	
-	# Create a new StaticBody3D for the floor collision
-	var floor_body = StaticBody3D.new()
-	floor_body.name = "UnifiedFloorCollision"
-	floor_body.collision_layer = 1  # Layer 1 for environment
-	floor_body.collision_mask = 7   # Layers 1+2+3 (environment, passengers, player)
-	add_child(floor_body)
-	
-	# Create a debug container if needed
-	var debug_container = null
-	if show_collision_debug:
-		debug_container = Node3D.new()
-		debug_container.name = "DebugContainer"
-		add_child(debug_container)
-	
-	# Create a 2D grid to track floor tile locations
-	var floor_grid = []
-	for y in range(grid_height):
-		var row = []
-		for x in range(grid_width):
-			row.append(false)
-		floor_grid.append(row)
-	
-	# Use explicit filtering for floor tiles
-	var floor_tiles = []
-	for child in get_children():
-		# Skip objects that aren't floor tiles
-		if not ("TileFloor" in child.name or "TileEmpty" in child.name):
-			continue
-			
-		# Skip the child if it doesn't have a valid position
-		if not child.has_method("get_position"):
-			continue
-			
-		# Calculate grid coordinates
-		var local_pos = child.position  # Use local position
-		var grid_x = int(round(local_pos.x / cell_size))
-		var grid_y = int(round(local_pos.z / cell_size))
-		
-		# Skip if outside grid bounds
-		if grid_x < 0 or grid_x >= grid_width or grid_y < 0 or grid_y >= grid_height:
-			continue
-			
-		# Mark this position as having a floor
-		floor_grid[grid_y][grid_x] = true
-		floor_tiles.append({"x": grid_x, "y": grid_y, "pos": local_pos})
-		
-	print("Found ", floor_tiles.size(), " floor tiles for collision")
-	
-	# Create collision shapes for each floor tile
-	for tile in floor_tiles:
-		var box_shape = BoxShape3D.new()
-		box_shape.size = Vector3(cell_size, 0.1, cell_size)
-		
-		var collision_shape = CollisionShape3D.new()
-		collision_shape.shape = box_shape
-		collision_shape.name = "FloorCollision_" + str(tile.x) + "_" + str(tile.y)
-		
-		# Add to scene tree first
-		floor_body.add_child(collision_shape)
-		
-		# Now set the position
-		collision_shape.position = Vector3(
-			tile.pos.x,   # X position 
-			-0.05,        # Y position (slightly below surface)
-			tile.pos.z    # Z position
-		)
-		
-		# Create debug visualization if enabled
-		if show_collision_debug and debug_container:
-			var debug_mesh = MeshInstance3D.new()
-			debug_mesh.name = "DebugMesh_" + str(tile.x) + "_" + str(tile.y)
-			
-			var box_mesh = BoxMesh.new()
-			box_mesh.size = Vector3(cell_size, 0.1, cell_size)
-			debug_mesh.mesh = box_mesh
-			
-			var material = StandardMaterial3D.new()
-			material.albedo_color = debug_color
-			material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-			material.albedo_color.a = 0.4
-			debug_mesh.material_override = material
-			
-			# Add to scene tree first
-			debug_container.add_child(debug_mesh)
-			
-			# Then set position
-			debug_mesh.position = Vector3(tile.pos.x, -0.05, tile.pos.z)
-	
-	print("Unified floor collision completed with ", floor_body.get_child_count(), " shapes")
-# Create debug meshes for individual collision shapes
-func create_tile_debug_mesh(position: Vector3, size: Vector3) -> MeshInstance3D:
-	# Create a mesh instance for visualization
-	var debug_mesh = MeshInstance3D.new()
-	debug_mesh.name = "DebugMesh_" + str(position.x) + "_" + str(position.z)
-	
-	# Create a box mesh with the same dimensions as the collision
-	var box_mesh = BoxMesh.new()
-	box_mesh.size = size
-	debug_mesh.mesh = box_mesh
-	
-	# Create wireframe material
-	var material = StandardMaterial3D.new()
-	material.albedo_color = debug_color
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.albedo_color.a = 0.4
-	
-	debug_mesh.material_override = material
-	
-	# Set the local position
-	debug_mesh.position = position
-	
-	return debug_mesh

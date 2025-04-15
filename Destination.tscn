@@ -1,6 +1,6 @@
 [gd_scene load_steps=16 format=3 uid="uid://c2dqc3xoqapu4"]
 
-[ext_resource type="Script" path="res://scripts/Destination.gd" id="1_d8qwv"]
+[ext_resource type="Script" uid="uid://bu63ftqfhk10x" path="res://scripts/Destination.gd" id="1_d8qwv"]
 [ext_resource type="PackedScene" uid="uid://x5qxel6t55b7" path="res://tiles/TileEmpty.tscn" id="2_mf2ow"]
 
 [sub_resource type="CylinderMesh" id="CylinderMesh_platform"]
@@ -116,8 +116,8 @@ tracks/3/keys = {
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_wave"]
 _data = {
-"RESET": SubResource("Animation_idle"),
-"flag_wave": SubResource("Animation_wave")
+&"RESET": SubResource("Animation_idle"),
+&"flag_wave": SubResource("Animation_wave")
 }
 
 [sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_sparkle"]
@@ -202,7 +202,7 @@ shape = SubResource("CylinderShape3D_area")
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 libraries = {
-"": SubResource("AnimationLibrary_wave")
+&"": SubResource("AnimationLibrary_wave")
 }
 autoplay = "flag_wave"
 

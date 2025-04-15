@@ -1,8 +1,8 @@
 @tool
 extends EditorScript
 
-@export var blueprint_file_path: String = "res://blueprints/blueprint5.txt"
-@export var output_scene_path: String = "res://GeneratedLevels/level_5.tscn"
+@export var blueprint_file_path: String = "res://blueprints/blueprint2.txt"
+@export var output_scene_path: String = "res://GeneratedLevels/level_2.tscn"
 
 var tile_mapping := {
 	'#': "res://tiles/TileWall.tscn",

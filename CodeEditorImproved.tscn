@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://lgdcjq8scpdh"]
 
-[ext_resource type="Script" path="res://scripts/CodeEditorImproved.gd" id="1_l85x1"]
+[ext_resource type="Script" uid="uid://bh8wdbg3jd0p7" path="res://scripts/CodeEditorImproved.gd" id="1_l85x1"]
 
 [node name="CodeEditorImproved" type="Control"]
 layout_mode = 3

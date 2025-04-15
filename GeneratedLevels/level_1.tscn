@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://ewlricxenlx4"]
 
-[ext_resource type="Script" path="res://scripts/Level.gd" id="1_s11tu"]
+[ext_resource type="Script" uid="uid://cjjstkum6fvgy" path="res://scripts/Level.gd" id="1_s11tu"]
 [ext_resource type="PackedScene" uid="uid://x5qxel6t55b7" path="res://tiles/TileEmpty.tscn" id="2_rco5s"]
 [ext_resource type="PackedScene" uid="uid://cxie2a720ppah" path="res://tiles/TileWall.tscn" id="3_3tm3l"]
 [ext_resource type="PackedScene" uid="uid://dad2ggmdjwk3x" path="res://tiles/TileDoor.tscn" id="3_5lrd5"]
@@ -9,7 +9,6 @@
 script = ExtResource("1_s11tu")
 grid_width = 8
 grid_height = 3
-show_collision_debug = true
 next_level_path = "res://GeneratedLevels/level_2.tscn"
 
 [node name="TileWall_0" parent="." instance=ExtResource("3_3tm3l")]

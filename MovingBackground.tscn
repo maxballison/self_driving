@@ -1,6 +1,6 @@
 [gd_scene load_steps=4 format=3 uid="uid://bsbj77waho1rq"]
 
-[ext_resource type="Shader" path="res://shaders/CleanWavyBackground.gdshader" id="1_shader"]
+[ext_resource type="Shader" uid="uid://dfnyn5y5xg2lf" path="res://shaders/CleanWavyBackground.gdshader" id="1_shader"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_j2bxh"]
 render_priority = -1
