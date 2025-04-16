@@ -337,7 +337,7 @@ func drive() -> void:
 		print("Car moving forward - impulse applied, drive units: ", current_drive_units)
 	else:
 		# If recently grounded but now airborne, still try to move
-		var time_since_impulse = get_tree().get_frames() % 10
+		var time_since_impulse = Engine.get_physics_frames() % 10
 		if time_since_impulse < 5 and (global_position - last_grounded_position).length() < 1.0:
 			apply_central_impulse(current_direction * move_speed * 0.4)
 			print("Car moving in air from recent ground contact")
