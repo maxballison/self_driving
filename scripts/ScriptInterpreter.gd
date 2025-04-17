@@ -103,7 +103,7 @@ func _run_interpreter(indent_level: int) -> void:
 
 		# Interpret the line, passing the indent level for control structures
 		var result: String = await _interpret_line(line, indent_level)
-
+'''
 		if result == "MOVE":
 			# Yield for run_delay seconds for move statements
 			var t = get_tree().create_timer(owner.run_delay)
@@ -117,9 +117,9 @@ func _run_interpreter(indent_level: int) -> void:
 		elif result == "RETURN":
 			# Function is returning, so exit current block
 			return
-			
+		
 		if not is_running:
-			return
+			return'''
 
 # ----------------------------------------------------------------------
 # SCOPING HELPERS
@@ -167,7 +167,7 @@ func _interpret_line(line: String, indent_level: int) -> String:
 		var result_ok = _interpret_var_declaration(line)
 		return "NONE" if result_ok else "ERROR"
 	elif line.begins_with("drive("):
-		var ok = _interpret_drive_statement(line)
+		var ok = await _interpret_drive_statement(line)
 		if ok:
 			return "MOVE"
 		else:
@@ -185,13 +185,13 @@ func _interpret_line(line: String, indent_level: int) -> String:
 		else:
 			return "ERROR"
 	elif line.begins_with("turn_left("):
-		var ok = _interpret_turn_left_statement(line)
+		var ok = await _interpret_turn_left_statement(line)
 		if ok:
 			return "MOVE"  # Yield for turn animation
 		else:
 			return "ERROR"
 	elif line.begins_with("turn_right("):
-		var ok = _interpret_turn_right_statement(line)
+		var ok = await _interpret_turn_right_statement(line)
 		if ok:
 			return "MOVE"  # Yield for turn animation
 		else:
@@ -537,6 +537,9 @@ func _interpret_drive_statement(line: String) -> bool:
 		
 	if player:
 		player.drive()
+		# wait until the car reports it has crossed exactly one tile
+		await player.tile_reached
+		return true
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
@@ -554,6 +557,8 @@ func _interpret_turn_left_statement(line: String) -> bool:
 		
 	if player:
 		player.turn_left()
+		await player.turn_finished
+
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
@@ -571,6 +576,8 @@ func _interpret_turn_right_statement(line: String) -> bool:
 		
 	if player:
 		player.turn_right()
+		await player.turn_finished
+
 	else:
 		push_error("No player assigned to interpreter.")
 		return false

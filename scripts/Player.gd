@@ -11,10 +11,8 @@ var can_reset: bool = true
 var is_grounded: bool = false # Track if car is on the ground
 
 # New driving mechanics
-var target_distance: float = 0.0  # Distance the car aims to travel
-var current_drive_units: int = 0  # Number of drive commands issued
 var unit_distance: float = 1.0  # One "unit" of distance
-var natural_friction: float = 0.2  # Even less friction (was 0.3)
+var natural_friction: float = 5  # Even less friction (was 0.3)
 var last_grounded_position: Vector3 = Vector3.ZERO # Track last known good position
 
 # Direction vector (normalized)
@@ -51,13 +49,28 @@ signal passenger_picked_up(passenger)
 signal passenger_delivered(passenger, destination)
 signal level_completed()
 
+# ─────────────────────────────────────────────────────────────
+# NEW SIGNALS – the interpreter will wait on these
+signal tile_reached          # every time we cross EXACTLY 1 unit
+signal turn_finished         # emitted at the end of _perform_turn()
+
+# ─────────────────────────────────────────────────────────────
+# NEW STATE
+var step_queue      : int   = 0        # how many 1‑unit steps still to go
+var step_origin     : Vector3          # centre of tile we started the current step on
+var step_speed      : float = 3.0      # ≈ units / second (tweak to taste)
+
+# helper
+func _snap_to_grid(v : Vector3) -> Vector3:
+	return Vector3(round(v.x), v.y, round(v.z))
+
 func _ready() -> void:
 	# Set initial direction based on rotation
 	update_direction_from_rotation()
 	
 	# Create a physics material with low friction
 	var physics_mat = PhysicsMaterial.new()
-	physics_mat.friction = 0.01  # Extremely low friction for better sliding
+	physics_mat.friction = 0  # Extremely low friction for better sliding
 	physics_mat.bounce = 0.1    # Slight bounce
 	physics_material_override = physics_mat
 	
@@ -138,9 +151,9 @@ func _physics_process(delta: float) -> void:
 		if forward_velocity > 0.2:  # Only apply friction when moving
 			var friction_force = -current_direction * forward_velocity * natural_friction * delta * 60.0
 			apply_central_force(friction_force)
-		elif abs(forward_velocity) < 0.02:  # Extremely low threshold for stopping completely
+		elif abs(forward_velocity) < 0.2:  # Extremely low threshold for stopping completely
 			# Instead of zeroing velocity, just apply a very tiny slowdown
-			linear_velocity *= 0.95
+			linear_velocity *= .95
 	
 	# Detect if car is at an edge (some wheels on ground, some not)
 	var at_edge = wheel_info.wheels_on_ground > 0 and wheel_info.wheels_on_ground < 4
@@ -148,6 +161,26 @@ func _physics_process(delta: float) -> void:
 	var wheels_back = wheel_info.back_wheels_on_ground
 	var wheels_left = wheel_info.left_wheels_on_ground
 	var wheels_right = wheel_info.right_wheels_on_ground
+	
+	if is_driving:
+		var traveled := (global_position - step_origin).dot(current_direction)
+		
+		# reached the centre of the next tile?
+		if traveled >= unit_distance:
+			# snap to the exact grid intersection
+			var horiz_target := step_origin + current_direction * unit_distance
+			global_position.x = horiz_target.x
+			global_position.z = horiz_target.z    # y stays exactly where physics put it
+			#linear_velocity = current_direction * step_speed      # keep constant speed
+			step_origin     = _snap_to_grid(global_position)
+			step_queue     -= 1
+			emit_signal("tile_reached")
+			
+			# no more queued steps – start braking so we stop 1 tile later
+			if step_queue <= 0:
+				is_driving = false
+				# simple “let it coast” approach
+				linear_velocity = current_direction * (step_speed * 0.5)
 	
 	# Handle physics based on car position
 	if is_grounded and not at_edge:
@@ -308,51 +341,48 @@ func _perform_turn() -> void:
 	
 	# Complete turn after a short delay
 	await get_tree().create_timer(0.15)
+	emit_signal("turn_finished")
+
 	turn_in_progress = false
 
 # COMMAND FUNCTIONS
 
 func drive() -> void:
-	# Force immediate ground check
-	is_grounded = _check_grounded()
+	# queue another 1‑unit step
+	step_queue += 1
 	
-	# Only apply impulse if grounded
-	if is_grounded:
-		# Calculate current forward velocity
-		var forward_velocity = current_direction.dot(linear_velocity)
+	# if we were standing still, initialise a new “run”
+	if step_queue == 1:
+		step_origin = _snap_to_grid(global_position)
+		is_driving  = true
+		linear_velocity = current_direction * step_speed
 		
-		# Increment drive units
-		current_drive_units += 1
-		target_distance = current_drive_units * unit_distance
-		
-		# Calculate impulse strength based on current velocity
-		var impulse_strength = move_speed * 1
-		
-		# Reduce impulse if approaching max speed
-		if forward_velocity > max_velocity * 0.6:
-			impulse_strength *= (1.0 - (forward_velocity / max_velocity))
-		
-		# Apply impulse for discrete movement
-		apply_central_impulse(current_direction * impulse_strength)
-		print("Car moving forward - impulse applied, drive units: ", current_drive_units)
-	else:
-		# If recently grounded but now airborne, still try to move
-		var time_since_impulse = Engine.get_physics_frames() % 10
-		if time_since_impulse < 5 and (global_position - last_grounded_position).length() < 1.0:
-			apply_central_impulse(current_direction * move_speed * 0.4)
-			print("Car moving in air from recent ground contact")
-		else:
-			print("Car not grounded - cannot move forward")
 
 func stop() -> void:
-	# Apply lighter braking force for more gradual stops
-	var brake_force = -linear_velocity.normalized() * linear_velocity.length() * 4.0
-	apply_central_force(brake_force)
+	# Clear the step queue and driving flag
+	step_queue = 0
+	is_driving = false
 	
-	# Reset drive units
-	current_drive_units = 0
-	target_distance = 0.0
-	print("Car slowing down - drive units reset")
+	# Store current velocity for braking calculation
+	var current_vel = linear_velocity
+	
+	# Zero out velocity
+	linear_velocity = Vector3.ZERO
+	
+	# Set a temporary higher friction coefficient
+	var temp_material = PhysicsMaterial.new()
+	temp_material.friction = 2.0  # Temporarily high friction
+	temp_material.bounce = 0.0    # No bounce
+	physics_material_override = temp_material
+	
+	# Reset physics material after short delay
+	get_tree().create_timer(0.03).timeout.connect(func():
+		var normal_material = PhysicsMaterial.new()
+		normal_material.friction = 0
+		normal_material.bounce = 0.1
+		physics_material_override = normal_material
+	)
+
 
 func turn_left() -> void:
 	turn_direction = 1
@@ -610,10 +640,7 @@ func reset_physics_state() -> void:
 	turn_queued = false
 	reset_in_progress = false
 	can_reset = true
-	
-	# Reset drive units counter
-	current_drive_units = 0
-	target_distance = 0.0
+
 	
 	# Reset velocities
 	linear_velocity = Vector3.ZERO

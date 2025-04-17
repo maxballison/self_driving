@@ -9,6 +9,7 @@ signal level_switched()
 
 func _ready() -> void:
 	load_level("res://GeneratedLevels/level_3.tscn")
+	
 
 func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1)) -> void:
 	print("Loading level: ", scene_path)
@@ -112,8 +113,6 @@ func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1))
 		player.linear_velocity = Vector3.ZERO
 		player.angular_velocity = Vector3.ZERO
 		
-		# Apply a slight upward impulse to help avoid floor clipping
-		player.apply_central_impulse(Vector3(0, 2.0, 0))
 		
 		# Connect signals if not already connected
 		_connect_player_signals(player)
@@ -180,8 +179,6 @@ func schedule_level_reset(_passenger = null) -> void:
 	
 	# Just stop the player's movement, but DON'T reset position yet
 	var player = get_node("/root/Main/Player")
-	if player and player.has_method("stop"):
-		player.stop()
 	
 	# Clean up any orphaned indicators immediately
 	for child in get_tree().root.get_children():
@@ -190,7 +187,7 @@ func schedule_level_reset(_passenger = null) -> void:
 			print("Cleaned up orphaned indicator during reset")
 	
 	# Reset the level after a delay to show the ragdoll effect
-	var timer = get_tree().create_timer(2.5) # Increased time to 2.5 seconds for longer ragdoll effect
+	var timer = get_tree().create_timer(1) # Increased time to 2.5 seconds for longer ragdoll effect
 	timer.timeout.connect(func():
 		# Clear the reset flag
 		remove_meta("reset_scheduled")
