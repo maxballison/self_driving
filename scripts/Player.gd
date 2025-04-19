@@ -12,7 +12,7 @@ var is_grounded: bool = false # Track if car is on the ground
 
 # New driving mechanics
 var unit_distance: float = 1.0  # One "unit" of distance
-var natural_friction: float = 5  # Even less friction (was 0.3)
+var natural_friction: float = 20  # Even less friction (was 0.3)
 var last_grounded_position: Vector3 = Vector3.ZERO # Track last known good position
 
 # Direction vector (normalized)
@@ -58,7 +58,9 @@ signal turn_finished         # emitted at the end of _perform_turn()
 # NEW STATE
 var step_queue      : int   = 0        # how many 1‑unit steps still to go
 var step_origin     : Vector3          # centre of tile we started the current step on
-var step_speed      : float = 3.0      # ≈ units / second (tweak to taste)
+var step_speed      : float = 4.0      # ≈ units / second (tweak to taste)
+
+var old_direction: Vector3 = Vector3.ZERO  # Store previous direction
 
 # helper
 func _snap_to_grid(v : Vector3) -> Vector3:
@@ -164,24 +166,24 @@ func _physics_process(delta: float) -> void:
 	
 	if is_driving:
 		var traveled := (global_position - step_origin).dot(current_direction)
-		
+		print(traveled)
 		# reached the centre of the next tile?
 		if traveled >= unit_distance:
 			# snap to the exact grid intersection
 			var horiz_target := step_origin + current_direction * unit_distance
-			global_position.x = horiz_target.x
-			global_position.z = horiz_target.z    # y stays exactly where physics put it
+			#global_position.x = horiz_target.x
+			#global_position.z = horiz_target.z    # y stays exactly where physics put it
 			#linear_velocity = current_direction * step_speed      # keep constant speed
 			step_origin     = _snap_to_grid(global_position)
 			step_queue     -= 1
 			emit_signal("tile_reached")
 			
-			# no more queued steps – start braking so we stop 1 tile later
+			'''# no more queued steps – start braking so we stop 1 tile later
 			if step_queue <= 0:
 				is_driving = false
 				# simple “let it coast” approach
 				linear_velocity = current_direction * (step_speed * 0.5)
-	
+	'''
 	# Handle physics based on car position
 	if is_grounded and not at_edge:
 		# Fully on ground - keep upright
@@ -319,45 +321,87 @@ func update_direction_from_rotation() -> void:
 # Perform turn
 func _perform_turn() -> void:
 	if turn_in_progress:
+		print("Warning: _perform_turn called while already in progress.")
 		return
-	
-	turn_in_progress = true
-	
-	# Store current velocity magnitude for restoration after turn
-	var current_speed = linear_velocity.length()
-	
-	# Apply gentler braking force for more slide during turns
-	var brake_force = -linear_velocity * 2.0  # Even gentler braking
-	apply_central_force(brake_force)
-	
-	# Rotate based on direction
-	rotation.y += PI/2 * turn_direction
-	update_direction_from_rotation()
-	
-	# Apply impulse in new direction proportional to previous speed
-	if is_grounded:
-		var turn_impulse = min(current_speed * 0.7, move_speed * 0.2)
-		apply_central_impulse(current_direction * turn_impulse)
-	
-	# Complete turn after a short delay
-	await get_tree().create_timer(0.15)
-	emit_signal("turn_finished")
 
+	turn_in_progress = true
+	#print("Turn started (using angular velocity)...") # Debugging
+
+	# Store velocity BEFORE rotation starts
+	var velocity_before_turn = linear_velocity
+
+	# --- Rotation using Angular Velocity ---
+	var turn_duration = 0.05 # Desired duration of the 90-degree turn
+	var start_rotation_y = rotation.y
+
+	# Calculate target angle change (90 degrees = PI/2 radians)
+	var delta_angle = PI/2.0 * float(turn_direction)
+
+	# Calculate the required angular velocity to make the turn in the desired time
+	var required_angular_velocity_y = delta_angle / turn_duration
+
+	# Apply the angular velocity
+	angular_velocity = Vector3(0, required_angular_velocity_y, 0)
+
+	# Wait for the turn duration using a timer
+	# This allows physics_process to continue running smoothly
+	await get_tree().create_timer(turn_duration).timeout
+
+	# Stop the rotation precisely
+	angular_velocity = Vector3.ZERO
+
+	# Clamp the rotation to the exact target angle to avoid drift from physics
+	var target_rotation_y = start_rotation_y + delta_angle
+	# Normalize the angle to prevent it growing indefinitely (optional but good practice)
+	target_rotation_y = wrapf(target_rotation_y, -PI, PI)
+	rotation.y = target_rotation_y
+
+	# Update the internal direction vector
+	update_direction_from_rotation()
+	# --- End Rotation using Angular Velocity ---
+
+
+	# --- Apply Rotated Linear Velocity ---
+	# Rotate the velocity vector we stored earlier by the same angle
+	var rotated_velocity = velocity_before_turn.rotated(Vector3.UP, delta_angle)
+
+	# Apply the rotated velocity, maybe slightly dampened
+	linear_velocity = rotated_velocity * 0.90 # Keep 90% speed (tweak as needed)
+
+
+	# --- Reset flag and emit signal ---
 	turn_in_progress = false
+	#print("Turn finished (angular velocity), emitting signal.") # Debugging
+	emit_signal("turn_finished")
+	
 
 # COMMAND FUNCTIONS
 
 func drive() -> void:
-	# queue another 1‑unit step
+	# queue another 1-unit step
 	step_queue += 1
 	
-	# if we were standing still, initialise a new “run”
+	# if we were standing still, initialise a new "run"
 	if step_queue == 1:
 		step_origin = _snap_to_grid(global_position)
-		is_driving  = true
-		linear_velocity = current_direction * step_speed
+		is_driving = true
 		
-
+		# Store current velocity before applying new impulse
+		var current_vel = linear_velocity
+		
+		# If we just made a turn, blend old and new directions
+		if old_direction != Vector3.ZERO and old_direction != current_direction:
+			# Apply force in new direction
+			linear_velocity = current_direction * step_speed
+			
+			# Add some of the old momentum to create sliding
+			linear_velocity += old_direction * (current_vel.length())
+		else:
+			# Normal case - just move in current direction
+			linear_velocity = current_direction * step_speed
+			
+		# Store direction for next turn
+		old_direction = current_direction
 func stop() -> void:
 	# Clear the step queue and driving flag
 	step_queue = 0
@@ -376,23 +420,35 @@ func stop() -> void:
 	physics_material_override = temp_material
 	
 	# Reset physics material after short delay
-	get_tree().create_timer(0.03).timeout.connect(func():
+	get_tree().create_timer(0.3).timeout.connect(func():
 		var normal_material = PhysicsMaterial.new()
 		normal_material.friction = 0
 		normal_material.bounce = 0.1
 		physics_material_override = normal_material
+		emit_signal("tile_reached")
 	)
+	
 
 
 func turn_left() -> void:
 	turn_direction = 1
-	turn_queued = true
-	print("Turn left queued")
+	if not turn_in_progress:
+		# REMOVE await here. Just start the turn. The interpreter will wait for the signal.
+		_perform_turn()
+	else:
+		# This case shouldn't happen often if the interpreter awaits correctly,
+		# but good to have a log just in case.
+		print("Turn Left command ignored: Turn already in progress.")
+
 
 func turn_right() -> void:
 	turn_direction = -1
-	turn_queued = true
-	print("Turn right queued")
+	if not turn_in_progress:
+		# REMOVE await here. Just start the turn. The interpreter will wait for the signal.
+		_perform_turn()
+	else:
+		print("Turn Right command ignored: Turn already in progress.")
+
 
 func wait(seconds: float) -> void:
 	print("Waiting for ", seconds, " seconds")

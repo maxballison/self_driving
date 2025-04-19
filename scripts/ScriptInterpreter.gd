@@ -173,7 +173,7 @@ func _interpret_line(line: String, indent_level: int) -> String:
 		else:
 			return "ERROR"
 	elif line.begins_with("stop("):
-		var ok = _interpret_stop_statement(line)
+		var ok = await _interpret_stop_statement(line)
 		if ok:
 			return "NONE"
 		else:
@@ -242,6 +242,7 @@ func _interpret_stop_statement(line: String) -> bool:
 		
 	if player:
 		player.stop()
+		await player.tile_reached
 		return true
 	else:
 		push_error("No player assigned to interpreter.")
