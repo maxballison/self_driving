@@ -688,7 +688,10 @@ func reset_physics_state() -> void:
 	turn_queued = false
 	reset_in_progress = false
 	can_reset = true
-
+	
+	# Reset step-based movement variables
+	step_queue = 0
+	step_origin = _snap_to_grid(global_position)
 	
 	# Reset velocities
 	linear_velocity = Vector3.ZERO
@@ -700,6 +703,12 @@ func reset_physics_state() -> void:
 	
 	# Update direction based on rotation (important after teleporting)
 	update_direction_from_rotation()
+	
+	# Reset physics material to default
+	var physics_mat = PhysicsMaterial.new()
+	physics_mat.friction = 0  # Extremely low friction for better sliding
+	physics_mat.bounce = 0.1  # Slight bounce
+	physics_material_override = physics_mat
 	
 	# Apply a small upward impulse to prevent floor clipping
 	apply_central_impulse(Vector3(0, 1.0, 0))

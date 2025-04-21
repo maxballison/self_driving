@@ -54,7 +54,7 @@ func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1))
 	if current_level_instance.get("start_direction"):
 		level_start_dir = current_level_instance.start_direction
 
-	# Reset passenger states (now done differently for physics-based passengers)
+	# Reset passenger states
 	var passengers = get_tree().get_nodes_in_group("passengers")
 	for passenger in passengers:
 		print("Found passenger: ", passenger.name, " of type: ", passenger.get_class())
@@ -62,7 +62,7 @@ func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1))
 			passenger.reset_state()
 			print("Reset passenger state for: ", passenger.name)
 
-	# Set up the Player with the new physics-based approach
+	# Set up the Player
 	var player = get_node("/root/Main/Player")
 	if player:
 		# Calculate world position from grid position
@@ -97,22 +97,13 @@ func load_level(scene_path: String, spawn_position: Vector2i = Vector2i(-1, -1))
 		# Only set Y rotation to keep the car upright
 		player.rotation = Vector3(0, rotation_y, 0)
 		
-		# Ensure direction vector is updated from rotation
-		if player.has_method("update_direction_from_rotation"):
-			player.update_direction_from_rotation()
+		# Call the full physics reset function
+		if player.has_method("reset_physics_state"):
+			player.reset_physics_state()
 		
 		# Clear any existing passengers in car
 		if player.has_method("clear_passengers"):
 			player.clear_passengers()
-		
-		# Stop any ongoing movement
-		if player.has_method("stop"):
-			player.stop()
-		
-		# Reset velocities
-		player.linear_velocity = Vector3.ZERO
-		player.angular_velocity = Vector3.ZERO
-		
 		
 		# Connect signals if not already connected
 		_connect_player_signals(player)
