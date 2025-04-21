@@ -2,8 +2,8 @@ extends RigidBody3D
 
 # Movement variables
 var is_driving: bool = false
-var move_speed: float = 25.0  # Speed for movement
-var max_velocity: float = 10.0  # Maximum velocity to prevent excessive speed
+var move_speed: float = 2.0  # Speed for movement
+var max_velocity: float = 2.0  # Maximum velocity to prevent excessive speed
 var turn_in_progress: bool = false
 var turn_direction: int = 0 # 1 for left, -1 for right
 var turn_queued: bool = false
@@ -12,7 +12,7 @@ var is_grounded: bool = false # Track if car is on the ground
 
 # New driving mechanics
 var unit_distance: float = 1.0  # One "unit" of distance
-var natural_friction: float = 20  # Even less friction (was 0.3)
+var natural_friction: float = 10  # Even less friction (was 0.3)
 var last_grounded_position: Vector3 = Vector3.ZERO # Track last known good position
 
 # Direction vector (normalized)
@@ -138,7 +138,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity_changed_abruptly = false
 	
-	# Apply natural friction when grounded to slow down car naturally
+	# Apply reduced friction to allow better sliding
 	if is_grounded and not turn_in_progress:
 		# Calculate current forward velocity and lateral velocity
 		var forward_velocity = current_direction.dot(linear_velocity)
@@ -146,17 +146,16 @@ func _physics_process(delta: float) -> void:
 		
 		# Apply gentler lateral friction (allow more sliding)
 		if lateral_velocity.length() > 0.2:
-			# Reduced lateral friction by lowering force multiplier
-			apply_central_force(-lateral_velocity.normalized() * lateral_velocity.length() * 0.3)
+			# Reduced lateral friction significantly
+			apply_central_force(-lateral_velocity.normalized() * lateral_velocity.length() * 0.1)
 		
 		# Apply very gradual forward friction
-		if forward_velocity > 0.2:  # Only apply friction when moving
-			var friction_force = -current_direction * forward_velocity * natural_friction * delta * 60.0
+		if forward_velocity > 0.2:
+			var friction_force = -current_direction * forward_velocity * natural_friction * delta * 20.0  # Reduced from 60.0
 			apply_central_force(friction_force)
-		elif abs(forward_velocity) < 0.2:  # Extremely low threshold for stopping completely
-			# Instead of zeroing velocity, just apply a very tiny slowdown
-			linear_velocity *= .95
-	
+		elif abs(forward_velocity) < 0.2:
+			# Extremely low threshold for stopping completely
+			linear_velocity *= 0.98  # Less aggressive slowdown
 	# Detect if car is at an edge (some wheels on ground, some not)
 	var at_edge = wheel_info.wheels_on_ground > 0 and wheel_info.wheels_on_ground < 4
 	var wheels_front = wheel_info.front_wheels_on_ground
@@ -325,7 +324,6 @@ func _perform_turn() -> void:
 		return
 
 	turn_in_progress = true
-	#print("Turn started (using angular velocity)...") # Debugging
 
 	# Store velocity BEFORE rotation starts
 	var velocity_before_turn = linear_velocity
@@ -344,7 +342,6 @@ func _perform_turn() -> void:
 	angular_velocity = Vector3(0, required_angular_velocity_y, 0)
 
 	# Wait for the turn duration using a timer
-	# This allows physics_process to continue running smoothly
 	await get_tree().create_timer(turn_duration).timeout
 
 	# Stop the rotation precisely
@@ -352,28 +349,21 @@ func _perform_turn() -> void:
 
 	# Clamp the rotation to the exact target angle to avoid drift from physics
 	var target_rotation_y = start_rotation_y + delta_angle
-	# Normalize the angle to prevent it growing indefinitely (optional but good practice)
+	# Normalize the angle to prevent it growing indefinitely
 	target_rotation_y = wrapf(target_rotation_y, -PI, PI)
 	rotation.y = target_rotation_y
 
 	# Update the internal direction vector
+	var previous_direction = current_direction
 	update_direction_from_rotation()
-	# --- End Rotation using Angular Velocity ---
 
-
-	# --- Apply Rotated Linear Velocity ---
-	# Rotate the velocity vector we stored earlier by the same angle
-	var rotated_velocity = velocity_before_turn.rotated(Vector3.UP, delta_angle)
-
-	# Apply the rotated velocity, maybe slightly dampened
-	linear_velocity = rotated_velocity * 0.90 # Keep 90% speed (tweak as needed)
-
-
+	# --- IMPORTANT: Preserve the original velocity (don't rotate it) ---
+	# This allows the car to continue sliding in its original direction
+	# We don't modify the linear_velocity at all during a turn
+	
 	# --- Reset flag and emit signal ---
 	turn_in_progress = false
-	#print("Turn finished (angular velocity), emitting signal.") # Debugging
 	emit_signal("turn_finished")
-	
 
 # COMMAND FUNCTIONS
 
@@ -385,23 +375,25 @@ func drive() -> void:
 	if step_queue == 1:
 		step_origin = _snap_to_grid(global_position)
 		is_driving = true
+	
+	# Add velocity in the current direction instead of resetting it
+	linear_velocity += current_direction * move_speed
+	
+	# Cap velocity components in each cardinal direction
+	var x_component = Vector3.RIGHT.dot(linear_velocity)
+	var z_component = Vector3.BACK.dot(linear_velocity)
+	
+	# Cap X component if it exceeds max_velocity
+	if abs(x_component) > max_velocity:
+		linear_velocity.x = sign(x_component) * max_velocity
+	
+	# Cap Z component if it exceeds max_velocity
+	if abs(z_component) > max_velocity:
+		linear_velocity.z = sign(z_component) * max_velocity
 		
-		# Store current velocity before applying new impulse
-		var current_vel = linear_velocity
-		
-		# If we just made a turn, blend old and new directions
-		if old_direction != Vector3.ZERO and old_direction != current_direction:
-			# Apply force in new direction
-			linear_velocity = current_direction * step_speed
-			
-			# Add some of the old momentum to create sliding
-			linear_velocity += old_direction * (current_vel.length())
-		else:
-			# Normal case - just move in current direction
-			linear_velocity = current_direction * step_speed
-			
-		# Store direction for next turn
-		old_direction = current_direction
+	# Store direction for next turn
+	old_direction = current_direction
+	
 func stop() -> void:
 	# Clear the step queue and driving flag
 	step_queue = 0
