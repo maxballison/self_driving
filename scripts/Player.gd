@@ -12,7 +12,7 @@ var is_grounded: bool = false # Track if car is on the ground
 
 # New driving mechanics
 var unit_distance: float = 1.0  # One "unit" of distance
-var natural_friction: float = 10  # Even less friction (was 0.3)
+var natural_friction: float = 20  # Even less friction (was 0.3)
 var last_grounded_position: Vector3 = Vector3.ZERO # Track last known good position
 
 # Direction vector (normalized)
@@ -329,7 +329,7 @@ func _perform_turn() -> void:
 	var velocity_before_turn = linear_velocity
 
 	# --- Rotation using Angular Velocity ---
-	var turn_duration = 0.05 # Desired duration of the 90-degree turn
+	var turn_duration = 0.02 # Desired duration of the 90-degree turn
 	var start_rotation_y = rotation.y
 
 	# Calculate target angle change (90 degrees = PI/2 radians)
