@@ -177,6 +177,7 @@ collision_mask = 2
 monitorable = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="PassengerPickupArea"]
+transform = Transform3D(1.0011, 0, 0, 0, 1.0011, 0, 0, 0, 2.0022, 0, 0, 0)
 shape = SubResource("BoxShape3D_car_area")
 
 [node name="ResetProtectionTimer" type="Timer" parent="."]
