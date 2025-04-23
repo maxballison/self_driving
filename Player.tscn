@@ -79,7 +79,7 @@ size = Vector2(0.2, 0.2)
 size = Vector3(0.608398, 0.3, 0.920898)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_car_area"]
-size = Vector3(2.24219, 0.5, 0.999756)
+size = Vector3(2, 0.5, 2)
 
 [node name="Player" type="RigidBody3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
@@ -177,7 +177,7 @@ collision_mask = 2
 monitorable = false
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="PassengerPickupArea"]
-transform = Transform3D(1.0011, 0, 0, 0, 1.0011, 0, 0, 0, 2.0022, 0, 0, 0)
+transform = Transform3D(1.00088, 0, 0, 0, 1.00088, 0, 0, 0, 1.00088, 0, 0, 0)
 shape = SubResource("BoxShape3D_car_area")
 
 [node name="ResetProtectionTimer" type="Timer" parent="."]

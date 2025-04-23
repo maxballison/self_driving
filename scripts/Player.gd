@@ -165,7 +165,6 @@ func _physics_process(delta: float) -> void:
 	
 	if is_driving:
 		var traveled := (global_position - step_origin).dot(current_direction)
-		print(traveled)
 		# reached the centre of the next tile?
 		if traveled >= unit_distance:
 			# snap to the exact grid intersection
@@ -229,11 +228,14 @@ func _physics_process(delta: float) -> void:
 		_handle_fall()
 	
 	# Debug output occasionally
+	'''
 	if Engine.get_physics_frames() % 60 == 0:
 		print("Velocity: ", linear_velocity.length(), " | Grounded: ", is_grounded, 
 			  " | Wheels: ", wheel_info.wheels_on_ground)
 		if velocity_changed_abruptly:
 			print("STOP DETECTED: ", debug_stop_reason)
+			
+'''
 	
 	# Store current velocity for next frame comparison
 	last_velocity = linear_velocity
@@ -325,8 +327,8 @@ func _perform_turn() -> void:
 
 	turn_in_progress = true
 
-	# Store velocity BEFORE rotation starts
-	var velocity_before_turn = linear_velocity
+	# Store velocity magnitude BEFORE rotation starts
+	var velocity_magnitude = linear_velocity.length()
 
 	# --- Rotation using Angular Velocity ---
 	var turn_duration = 0.02 # Desired duration of the 90-degree turn
@@ -357,9 +359,9 @@ func _perform_turn() -> void:
 	var previous_direction = current_direction
 	update_direction_from_rotation()
 
-	# --- IMPORTANT: Preserve the original velocity (don't rotate it) ---
-	# This allows the car to continue sliding in its original direction
-	# We don't modify the linear_velocity at all during a turn
+	# --- Apply velocity in the new direction ---
+	# Set the car to move in the new forward direction while maintaining speed
+	linear_velocity = current_direction * velocity_magnitude
 	
 	# --- Reset flag and emit signal ---
 	turn_in_progress = false
@@ -513,6 +515,7 @@ func _on_pickup_area_body_entered(body: Node) -> void:
 			print("Adding passenger to nearby passengers list: ", passenger.name)
 			if not nearby_passengers.has(passenger):
 				nearby_passengers.append(passenger)
+			passenger.set_pickup_highlight(true)
 	
 	# Handle destinations with improved detection
 	var destination = null
@@ -582,6 +585,7 @@ func _on_pickup_area_body_exited(body: Node) -> void:
 		if idx != -1:
 			print("Removing passenger from nearby list: ", passenger.name)
 			nearby_passengers.remove_at(idx)
+			passenger.set_pickup_highlight(false)
 	
 	# Find destination using same logic as in body_entered
 	var destination = null

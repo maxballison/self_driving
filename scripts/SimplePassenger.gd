@@ -11,6 +11,11 @@ var is_ragdolling: bool = false
 # Car reference when picked up
 var car_ref: Node3D = null
 
+var is_in_pickup_range = false
+var outline_effect = null
+var particle_effect = null
+var pulse_animation = null
+
 # Cached references for better performance
 @onready var passenger_model = $PassengerModel
 @onready var destination_indicator = $DestinationIndicator
@@ -26,6 +31,8 @@ func _ready():
 	
 	# Initialize destination color
 	set_destination_color()
+	if destination_indicator:
+		destination_indicator.visible = false
 	
 	# Initialize frozen state
 	freeze = true
@@ -43,15 +50,94 @@ func _ready():
 		body_entered.connect(_on_body_entered)
 	
 	print("SimplePassenger initialized: ", name, " with destination ID: ", destination_id)
+	setup_pickup_highlight_effect()
 
 func _process(delta: float) -> void:
 	# Update indicator position when picked up
 	if is_picked_up and car_ref and destination_indicator:
 		update_indicator_position()
+		
+		
+func setup_pickup_highlight_effect():
+	# Create a container for all visual effects
+	outline_effect = Node3D.new()
+	outline_effect.name = "PickupHighlightEffect"
+	add_child(outline_effect)
+	
+
+	var pickup_icon = MeshInstance3D.new()
+	pickup_icon.name = "PickupIcon"
+	
+	# Create a small plane mesh for the icon
+	var icon_mesh = QuadMesh.new()
+	icon_mesh.size = Vector2(0.3, 0.3)
+	pickup_icon.mesh = icon_mesh
+	
+	# Create a material with an arrow texture or icon
+	var icon_material = StandardMaterial3D.new()
+	icon_material.albedo_color = Color(1, 1, 1, 0.9)
+	icon_material.emission_enabled = true
+	icon_material.emission = Color(1, 1, 0, 1)
+	icon_material.emission_energy_multiplier = 1.5
+	icon_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	icon_material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	
+	pickup_icon.material_override = icon_material
+	pickup_icon.position = Vector3(0, 1.5, 0)
+	outline_effect.add_child(pickup_icon)
+	
+	# Create pulsing animation
+	pulse_animation = AnimationPlayer.new()
+	outline_effect.add_child(pulse_animation)
+	
+	var animation = Animation.new()
+	var track_index = animation.add_track(Animation.TYPE_VALUE)
+	animation.track_set_path(track_index, "../GlowingOutline:material_override:emission_energy_multiplier")
+	animation.track_insert_key(track_index, 0.0, 1.5)
+	animation.track_insert_key(track_index, 0.5, 3.0)
+	animation.track_insert_key(track_index, 1.0, 1.5)
+	animation.length = 1.0
+	animation.loop_mode = Animation.LOOP_LINEAR
+	
+	var animation_lib = AnimationLibrary.new()
+	animation_lib.add_animation("pulse", animation)
+	pulse_animation.add_animation_library("", animation_lib)
+	
+	# Hide effect initially
+	outline_effect.visible = false
+	
+# Call this when passenger enters pickup range
+func set_pickup_highlight(enabled: bool):
+	if outline_effect == null:
+		return
+		
+	is_in_pickup_range = enabled
+	
+	# Don't show highlight if passenger is already picked up or delivered
+	if is_picked_up or is_delivered or is_ragdolling:
+		outline_effect.visible = false
+		return
+		
+	outline_effect.visible = enabled
+	
+	if enabled:
+		# Start the animation and particles
+		pulse_animation.play("pulse")
+			
+		# Add a subtle floating motion to the icon
+		var tween = create_tween().set_loops()
+		tween.tween_property(outline_effect.get_node("PickupIcon"), "position:y", 
+							 1.6, 1.0).set_ease(Tween.EASE_IN_OUT)
+		tween.tween_property(outline_effect.get_node("PickupIcon"), "position:y", 
+							 1.4, 1.0).set_ease(Tween.EASE_IN_OUT)
+	else:
+		# Stop the animation and particles
+		pulse_animation.stop()
 
 # Helper functions for improved detection
 func is_passenger() -> bool:
 	return true
+
 
 func set_destination_color() -> void:
 	# Define standard colors for destinations
@@ -69,15 +155,38 @@ func set_destination_color() -> void:
 	var color_index = destination_id % colors.size()
 	var color = colors[color_index]
 	
+	# Create a material for the indicator
+	var material = StandardMaterial3D.new()
+	material.albedo_color = color
+	material.emission_enabled = false
+	material.emission = color
+	material.emission_energy_multiplier = 1.2
+	
 	# Apply the color to the indicator
 	if destination_indicator:
-		var material = StandardMaterial3D.new()
-		material.albedo_color = color
-		material.emission_enabled = true
-		material.emission = color
-		material.emission_energy_multiplier = 1.2
-		
 		destination_indicator.material_override = material
+	
+	# Apply the same color to the body part of the passenger model
+	if passenger_model:
+		# Create a duplicate of the material for the passenger body
+		var body_material = material.duplicate()
+		
+		# Find the body/shirt mesh using a recursive helper function
+		_apply_material_to_body_parts(passenger_model, body_material)
+		
+# Helper function to recursively find and color body parts
+func _apply_material_to_body_parts(node: Node, material: Material) -> void:
+	# Check each child of the current node
+	for child in node.get_children():
+		# If the child is a MeshInstance3D and has a name that suggests it's a body part
+		if child is MeshInstance3D:
+			var name_lower = child.name.to_lower()
+			# Apply material only to body/torso/shirt parts
+			if "body" in name_lower or "leftarm" in name_lower or "rightarm" in name_lower:
+				child.material_override = material
+		
+		# Recursively check children of this node
+		_apply_material_to_body_parts(child, material)
 
 func pick_up(car: Node3D) -> bool:
 	if is_picked_up or is_delivered or is_ragdolling:
@@ -90,12 +199,15 @@ func pick_up(car: Node3D) -> bool:
 	# Hide visual model, freeze physics
 	if passenger_model:
 		passenger_model.visible = false
+	if destination_indicator:
+		destination_indicator.visible = true
 	
 	# Disable collision while picked up
 	collision_layer = 0
 	collision_mask = 0
 	
 	emit_signal("passenger_picked_up", self)
+	set_pickup_highlight(false)
 	return true
 
 func deliver() -> bool:
@@ -145,6 +257,9 @@ func activate_ragdoll(car = null, car_direction: int = -1) -> void:
 	if passenger_model:
 		passenger_model.visible = true
 		print("Ensuring passenger model is visible for ragdoll")
+		
+	if outline_effect:
+		outline_effect.visible = false
 		
 	# Make sure we're visible at the node level too
 	visible = true
