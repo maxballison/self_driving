@@ -369,7 +369,7 @@ func _perform_turn() -> void:
 
 # COMMAND FUNCTIONS
 
-func drive() -> void:
+func gas() -> void:
 	# queue another 1-unit step
 	step_queue += 1
 	
@@ -396,7 +396,7 @@ func drive() -> void:
 	# Store direction for next turn
 	old_direction = current_direction
 	
-func stop() -> void:
+func brake() -> void:
 	# Clear the step queue and driving flag
 	step_queue = 0
 	is_driving = false
@@ -424,7 +424,7 @@ func stop() -> void:
 	
 
 
-func turn_left() -> void:
+func turnleft() -> void:
 	turn_direction = 1
 	if not turn_in_progress:
 		# REMOVE await here. Just start the turn. The interpreter will wait for the signal.
@@ -435,7 +435,7 @@ func turn_left() -> void:
 		print("Turn Left command ignored: Turn already in progress.")
 
 
-func turn_right() -> void:
+func turnright() -> void:
 	turn_direction = -1
 	if not turn_in_progress:
 		# REMOVE await here. Just start the turn. The interpreter will wait for the signal.
@@ -444,12 +444,9 @@ func turn_right() -> void:
 		print("Turn Right command ignored: Turn already in progress.")
 
 
-func wait(seconds: float) -> void:
-	print("Waiting for ", seconds, " seconds")
-	await get_tree().create_timer(seconds).timeout
-	print("Wait complete")
+# wait function removed
 
-func pick_up() -> bool:
+func pickup() -> bool:
 	if current_passengers.size() >= max_passengers:
 		print("Car is full! Cannot pick up more passengers.")
 		return false
@@ -467,7 +464,7 @@ func pick_up() -> bool:
 	print("No passengers to pick up nearby!")
 	return false
 
-func drop_off() -> bool:
+func dropoff() -> bool:
 	if current_passengers.size() == 0:
 		print("No passengers in car to drop off!")
 		return false

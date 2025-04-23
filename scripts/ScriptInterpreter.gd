@@ -166,52 +166,58 @@ func _interpret_line(line: String, indent_level: int) -> String:
 	elif line.begins_with("var "):
 		var result_ok = _interpret_var_declaration(line)
 		return "NONE" if result_ok else "ERROR"
-	elif line.begins_with("drive("):
-		var ok = await _interpret_drive_statement(line)
+	elif line.begins_with("gas("):
+		var ok = await _interpret_gas_statement(line)
 		if ok:
 			return "MOVE"
 		else:
 			return "ERROR"
-	elif line.begins_with("stop("):
-		var ok = await _interpret_stop_statement(line)
+	elif line.begins_with("brake("):
+		var ok = await _interpret_brake_statement(line)
 		if ok:
 			return "NONE"
 		else:
 			return "ERROR"
-	elif line.begins_with("wait("):
-		var ok = await _interpret_wait_statement(line)
-		if ok:
-			return "WAIT"
-		else:
-			return "ERROR"
-	elif line.begins_with("turn_left("):
-		var ok = await _interpret_turn_left_statement(line)
+	elif line.begins_with("turnleft("):
+		var ok = await _interpret_turnleft_statement(line)
 		if ok:
 			return "MOVE"  # Yield for turn animation
 		else:
 			return "ERROR"
-	elif line.begins_with("turn_right("):
-		var ok = await _interpret_turn_right_statement(line)
+	elif line.begins_with("turnright("):
+		var ok = await _interpret_turnright_statement(line)
 		if ok:
 			return "MOVE"  # Yield for turn animation
 		else:
 			return "ERROR"
 	# Add new function interpretations
-	elif line.begins_with("pick_up("):
-		var ok = _interpret_pick_up_statement(line)
+	elif line.begins_with("pickup("):
+		var ok = _interpret_pickup_statement(line)
 		if ok:
 			return "MOVE"  # Yield for animation
 		else:
 			return "ERROR"
-	elif line.begins_with("drop_off("):  # Changed from deliver to drop_off
-		var ok = _interpret_drop_off_statement(line)
+	elif line.begins_with("dropoff("):  # Changed from drop_off to dropoff
+		var ok = _interpret_dropoff_statement(line)
 		if ok:
 			return "MOVE"  # Yield for animation
 		else:
 			return "ERROR"
-	# Support older "deliver()" calls for backward compatibility
+	# Support older "deliver()" and "pick_up()"/"drop_off()" calls for backward compatibility
 	elif line.begins_with("deliver("):
-		var ok = _interpret_drop_off_statement(line.replace("deliver(", "drop_off("))
+		var ok = _interpret_dropoff_statement(line.replace("deliver(", "dropoff("))
+		if ok:
+			return "MOVE"
+		else:
+			return "ERROR"
+	elif line.begins_with("pick_up("):
+		var ok = _interpret_pickup_statement(line.replace("pick_up(", "pickup("))
+		if ok:
+			return "MOVE"
+		else:
+			return "ERROR"
+	elif line.begins_with("drop_off("):
+		var ok = _interpret_dropoff_statement(line.replace("drop_off(", "dropoff("))
 		if ok:
 			return "MOVE"
 		else:
@@ -230,124 +236,42 @@ func _interpret_line(line: String, indent_level: int) -> String:
 		push_warning("Unrecognized statement: %s" % line)
 		return "NONE"
 
-# New function to interpret stop() statement
-func _interpret_stop_statement(line: String) -> bool:
-	var inside = _extract_between(line, "stop(", ")")
+# New function to interpret brake() statement
+func _interpret_brake_statement(line: String) -> bool:
+	var inside = _extract_between(line, "brake(", ")")
 	inside = inside.strip_edges()
 	
 	# Verify no arguments were passed
 	if inside.length() > 0:
-		push_error("stop() doesn't take any parameters.")
+		push_error("brake() doesn't take any parameters.")
 		return false
 		
 	if player:
-		player.stop()
+		player.brake()
 		await player.tile_reached
 		return true
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
 
-# Helper function to keep a line highlighted for a duration and handle player wait
-func _highlight_line_for_duration(line_number: int, duration: float, player_ref: Node) -> void:
-	if code_editor == null or not code_editor.has_method("highlight_executing_line"):
-		# If no code editor, just wait without highlighting
-		if player_ref:
-			await player_ref.wait(duration)
-		return
-	
-	# Adjust line number to the wait() line (we've already incremented current_line)
-	var wait_line = line_number - 1
-	
-	# Store original caret position and selection in the editor
-	var original_caret_line = code_editor.text_edit.get_caret_line()
-	var original_caret_column = code_editor.text_edit.get_caret_column()
-	var had_selection = code_editor.text_edit.has_selection()
-	var select_from_line = -1
-	var select_from_column = -1
-	var select_to_line = -1
-	var select_to_column = -1
-	
-	if had_selection:
-		select_from_line = code_editor.text_edit.get_selection_from_line()
-		select_from_column = code_editor.text_edit.get_selection_from_column()
-		select_to_line = code_editor.text_edit.get_selection_to_line()
-		select_to_column = code_editor.text_edit.get_selection_to_column()
-	
-	# Apply the highlight color
-	code_editor.text_edit.add_theme_color_override("current_line_color", code_editor.highlight_color)
-	
-	# Move the caret to the wait line to ensure it's visible
-	code_editor.text_edit.set_caret_line(wait_line)
-	
-	# Start the player waiting
-	if player_ref:
-		await player_ref.wait(duration)
-	else:
-		# Fallback if player isn't available
-		await get_tree().create_timer(duration).timeout
-	
-	# Restore original line color only if we're still running
-	if is_running:
-		code_editor.text_edit.add_theme_color_override("current_line_color", code_editor.original_line_color)
-		
-		# Restore original caret position and selection
-		code_editor.text_edit.set_caret_line(original_caret_line)
-		code_editor.text_edit.set_caret_column(original_caret_column)
-		
-		if had_selection:
-			code_editor.text_edit.select(select_from_line, select_from_column, 
-						select_to_line, select_to_column)
+# This helper method for wait() is no longer needed
+# We're removing the wait function entirely
 
-# New function to interpret wait() statement
-func _interpret_wait_statement(line: String) -> bool:
-	var inside = _extract_between(line, "wait(", ")")
-	inside = inside.strip_edges()
-	
-	# Parse the wait time parameter
-	var wait_time = 0.0
-	if inside.is_valid_float():
-		wait_time = float(inside)
-	elif inside.is_valid_int():
-		wait_time = float(inside)
-	else:
-		# Try to evaluate as an expression
-		var value = _parse_value(inside)
-		if value is float or value is int:
-			wait_time = float(value)
-		else:
-			push_error("wait() requires a numeric parameter for seconds.")
-			return false
-	
-	if wait_time <= 0:
-		push_error("wait() requires a positive number of seconds.")
-		return false
-		
-	if player:
-		# Keep the line highlighted for the duration of the wait
-		var current_wait_line = current_line
-		
-		# Both highlight the line and wait at the same time
-		await _highlight_line_for_duration(current_wait_line, wait_time, player)
-		
-		return true
-	else:
-		push_error("No player assigned to interpreter.")
-		return false
+# The wait() function is removed
 
-# Function to interpret drop_off() statement
-func _interpret_drop_off_statement(line: String) -> bool:
-	# drop_off() takes no parameters
-	var inside = _extract_between(line, "drop_off(", ")")
+# Function to interpret dropoff() statement
+func _interpret_dropoff_statement(line: String) -> bool:
+	# dropoff() takes no parameters
+	var inside = _extract_between(line, "dropoff(", ")")
 	inside = inside.strip_edges()
 	
 	# Verify no arguments were passed
 	if inside.length() > 0:
-		push_error("drop_off() doesn't take any parameters.")
+		push_error("dropoff() doesn't take any parameters.")
 		return false
 		
 	if player:
-		return player.drop_off()  # Call the drop_off function
+		return player.dropoff()  # Call the dropoff function
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
@@ -478,18 +402,18 @@ func _handle_while_loop(line: String, indent_level: int) -> String:
 	current_line = block_end
 	return "NONE"
 
-func _interpret_pick_up_statement(line: String) -> bool:
-	# pick_up() takes no parameters
-	var inside = _extract_between(line, "pick_up(", ")")
+func _interpret_pickup_statement(line: String) -> bool:
+	# pickup() takes no parameters
+	var inside = _extract_between(line, "pickup(", ")")
 	inside = inside.strip_edges()
 	
 	# Verify no arguments were passed
 	if inside.length() > 0:
-		push_error("pick_up() doesn't take any parameters.")
+		push_error("pickup() doesn't take any parameters.")
 		return false
 		
 	if player:
-		return player.pick_up()
+		return player.pickup()
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
@@ -526,18 +450,18 @@ func _interpret_assignment(line: String) -> bool:
 	set_var(var_name, parsed_value)
 	return true
 
-func _interpret_drive_statement(line: String) -> bool:
-	# drive() takes no parameters
-	var inside = _extract_between(line, "drive(", ")")
+func _interpret_gas_statement(line: String) -> bool:
+	# gas() takes no parameters
+	var inside = _extract_between(line, "gas(", ")")
 	inside = inside.strip_edges()
 	
 	# Verify no arguments were passed
 	if inside.length() > 0:
-		push_error("drive() doesn't take any parameters.")
+		push_error("gas() doesn't take any parameters.")
 		return false
 		
 	if player:
-		player.drive()
+		player.gas()
 		# wait until the car reports it has crossed exactly one tile
 		await player.tile_reached
 		return true
@@ -546,18 +470,18 @@ func _interpret_drive_statement(line: String) -> bool:
 		return false
 	return true
 
-func _interpret_turn_left_statement(line: String) -> bool:
-	# turn_left() takes no parameters
-	var inside = _extract_between(line, "turn_left(", ")")
+func _interpret_turnleft_statement(line: String) -> bool:
+	# turnleft() takes no parameters
+	var inside = _extract_between(line, "turnleft(", ")")
 	inside = inside.strip_edges()
 	
 	# Verify no arguments were passed
 	if inside.length() > 0:
-		push_error("turn_left() doesn't take any parameters.")
+		push_error("turnleft() doesn't take any parameters.")
 		return false
 		
 	if player:
-		player.turn_left()
+		player.turnleft()
 		await player.turn_finished
 
 	else:
@@ -565,18 +489,18 @@ func _interpret_turn_left_statement(line: String) -> bool:
 		return false
 	return true
 
-func _interpret_turn_right_statement(line: String) -> bool:
-	# turn_right() takes no parameters
-	var inside = _extract_between(line, "turn_right(", ")")
+func _interpret_turnright_statement(line: String) -> bool:
+	# turnright() takes no parameters
+	var inside = _extract_between(line, "turnright(", ")")
 	inside = inside.strip_edges()
 	
 	# Verify no arguments were passed
 	if inside.length() > 0:
-		push_error("turn_right() doesn't take any parameters.")
+		push_error("turnright() doesn't take any parameters.")
 		return false
 		
 	if player:
-		player.turn_right()
+		player.turnright()
 		await player.turn_finished
 
 	else:

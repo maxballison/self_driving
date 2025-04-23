@@ -108,7 +108,7 @@ func create_syntax_highlighter() -> SyntaxHighlighter:
 		highlighter.add_keyword_color(keyword, keyword_color)
 	
 	# Add special functions
-	var functions = ["drive", "turn_right", "turn_left", "pick_up", "drop_off", "range"]
+	var functions = ["gas", "brake", "turnright", "turnleft", "pickup", "dropoff", "range"]
 	for func_name in functions:
 		highlighter.add_keyword_color(func_name, function_color)
 	
