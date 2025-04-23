@@ -46,6 +46,20 @@ func execute_script(script_text: String) -> void:
 	await _run_interpreter(0)
 	is_running = false
 	
+	
+	
+func reset_state() -> void:
+	current_line = 0
+	is_running = false
+	environment_stack.clear()
+	push_scope()  # Initialize with a fresh scope
+	
+	# Clear any highlighted line in the editor
+	if code_editor != null and code_editor.has_method("highlight_executing_line"):
+		code_editor.highlight_executing_line(-1)  # -1 means clear highlighting
+
+
+	
 # First pass to identify all functions in the code
 func _register_functions() -> void:
 	var line_idx = 0

@@ -60,6 +60,14 @@ func _ready() -> void:
 		text_edit.text = "# Welcome to the Code Editor\n# Write your code here\n\n"
 	
 	# Force update line counter
+	
+		# Add line highlight settings
+	text_edit.highlight_current_line = true
+	text_edit.add_theme_constant_override("line_spacing", 6)  # Add more spacing between lines
+	
+	# Initialize original line color
+	original_line_color = text_edit.get_theme_color("current_line_color", "TextEdit")
+	highlight_color = Color(1.0, 0.9, 0.2, 0.5)  # Bright yellow with transparency
 	CodeEditorTheme.apply_theme(self)
 	
 	# Store original line color
@@ -129,6 +137,11 @@ func create_syntax_highlighter() -> SyntaxHighlighter:
 
 # Method to highlight the currently executing line
 func highlight_executing_line(line_number: int) -> void:
+	# If line_number is -1, clear any highlighting and return
+	if line_number == -1:
+		text_edit.add_theme_color_override("current_line_color", original_line_color)
+		return
+		
 	if line_number >= 0 and line_number < text_edit.get_line_count():
 		# Store the original caret position and selection
 		var original_caret_line = text_edit.get_caret_line()
@@ -145,17 +158,18 @@ func highlight_executing_line(line_number: int) -> void:
 			select_to_line = text_edit.get_selection_to_line()
 			select_to_column = text_edit.get_selection_to_column()
 		
-		# Flash the current line color with white
-		text_edit.add_theme_color_override("current_line_color", highlight_color)
+		# Make the highlight more prominent - bright yellow background
+		var bright_highlight = Color(1.0, 0.9, 0.2, 0.5)  # Bright yellow with some transparency
+		text_edit.add_theme_color_override("current_line_color", bright_highlight)
 		
 		# Move the caret to this line to highlight it
 		text_edit.set_caret_line(line_number)
 		
-		# Ensure the line is visible by setting the caret
-		# Moving the caret automatically scrolls to make the line visible
+		# Center the view on this line
+		text_edit.center_viewport_to_caret()
 		
-		# Schedule unhighlighting after a delay
-		var timer = get_tree().create_timer(0.2)  # Flash for 200ms
+		# Schedule unhighlighting after a longer delay
+		var timer = get_tree().create_timer(0.5)  # Extended to 500ms for better visibility
 		timer.timeout.connect(func():
 			# Restore original line color
 			text_edit.add_theme_color_override("current_line_color", original_line_color)

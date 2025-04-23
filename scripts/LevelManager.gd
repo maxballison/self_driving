@@ -163,13 +163,11 @@ func schedule_level_reset(_passenger = null) -> void:
 	# Mark that a reset is scheduled
 	set_meta("reset_scheduled", true)
 	
-	# Stop code execution in the interpreter
+	# Stop code execution in the interpreter and reset its state
 	var interpreter = get_node("/root/Main/ScriptInterpreter")
 	if interpreter:
 		interpreter.is_running = false
-	
-	# Just stop the player's movement, but DON'T reset position yet
-	var player = get_node("/root/Main/Player")
+		interpreter.reset_state()  # Add this line to reset the interpreter
 	
 	# Clean up any orphaned indicators immediately
 	for child in get_tree().root.get_children():
@@ -178,7 +176,7 @@ func schedule_level_reset(_passenger = null) -> void:
 			print("Cleaned up orphaned indicator during reset")
 	
 	# Reset the level after a delay to show the ragdoll effect
-	var timer = get_tree().create_timer(1) # Increased time to 2.5 seconds for longer ragdoll effect
+	var timer = get_tree().create_timer(1) 
 	timer.timeout.connect(func():
 		# Clear the reset flag
 		remove_meta("reset_scheduled")
