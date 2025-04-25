@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://bm4kef2fvrw2n"]
+[gd_scene load_steps=19 format=3 uid="uid://bm4kef2fvrw2n"]
 
 [ext_resource type="Script" uid="uid://drqwv7tdn4lj7" path="res://scripts/Player.gd" id="1_mjbbh"]
 
@@ -80,6 +80,12 @@ size = Vector3(0.608398, 0.3, 0.920898)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_car_area"]
 size = Vector3(2, 0.5, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_xhfnw"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_kpjcp"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_kne1u"]
 
 [node name="Player" type="RigidBody3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
@@ -203,3 +209,21 @@ debug_shape_custom_color = Color(0, 0.94902, 0, 1)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, 0.1, 0.4)
 target_position = Vector3(0, -0.5, 0)
 debug_shape_custom_color = Color(0, 0.94902, 0, 1)
+
+[node name="CheckRight" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CheckRight"]
+shape = SubResource("BoxShape3D_xhfnw")
+
+[node name="CheckLeft" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CheckLeft"]
+shape = SubResource("BoxShape3D_kpjcp")
+
+[node name="CheckFront" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -1)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CheckFront"]
+shape = SubResource("BoxShape3D_kne1u")
