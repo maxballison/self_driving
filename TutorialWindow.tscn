@@ -57,7 +57,7 @@ grow_horizontal = 0
 grow_vertical = 2
 text = "×"
 
-[node name="MessageContainer" type="Panel" parent="."]
+[node name="TabContainer" type="TabContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -66,8 +66,22 @@ offset_top = 30.0
 offset_bottom = -40.0
 grow_horizontal = 2
 grow_vertical = 2
+tab_alignment = 1
+current_tab = 0
 
-[node name="RichTextLabel" type="RichTextLabel" parent="MessageContainer"]
+[node name="TutorialTab" type="Control" parent="TabContainer"]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="MessageContainer" type="Panel" parent="TabContainer/TutorialTab"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="RichTextLabel" type="RichTextLabel" parent="TabContainer/TutorialTab/MessageContainer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -82,6 +96,47 @@ bbcode_enabled = true
 text = "Welcome to the tutorial! The text will appear here with a typing effect."
 scroll_following = true
 
+[node name="DocsTab" type="Control" parent="TabContainer"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="HSplitContainer" type="HSplitContainer" parent="TabContainer/DocsTab"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+split_offset = 100
+
+[node name="FunctionList" type="ItemList" parent="TabContainer/DocsTab/HSplitContainer"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.4
+auto_height = true
+
+[node name="FunctionDescription" type="Panel" parent="TabContainer/DocsTab/HSplitContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="RichTextLabel" type="RichTextLabel" parent="TabContainer/DocsTab/HSplitContainer/FunctionDescription"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+bbcode_enabled = true
+text = "Select a function from the list to view its documentation."
+
 [node name="ButtonPanel" type="Panel" parent="."]
 layout_mode = 1
 anchors_preset = 12
@@ -91,6 +146,18 @@ anchor_bottom = 1.0
 offset_top = -40.0
 grow_horizontal = 2
 grow_vertical = 0
+
+[node name="BackButton" type="Button" parent="ButtonPanel"]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 10.0
+offset_top = -15.0
+offset_right = 80.0
+offset_bottom = 15.0
+grow_vertical = 2
+text = "Back"
 
 [node name="NextButton" type="Button" parent="ButtonPanel"]
 layout_mode = 1
@@ -123,5 +190,6 @@ mouse_default_cursor_shape = 12
 
 [connection signal="gui_input" from="TitleBar" to="." method="_on_title_bar_gui_input"]
 [connection signal="pressed" from="TitleBar/CloseButton" to="." method="_on_close_button_pressed"]
+[connection signal="pressed" from="ButtonPanel/BackButton" to="." method="_on_back_button_pressed"]
 [connection signal="pressed" from="ButtonPanel/NextButton" to="." method="_on_next_button_pressed"]
 [connection signal="gui_input" from="ResizeHandle" to="." method="_on_resize_handle_gui_input"]

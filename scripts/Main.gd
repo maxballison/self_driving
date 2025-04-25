@@ -42,6 +42,18 @@ func _ready():
 		# Manually trigger first tutorial
 		_on_level_switched()
 	
+	print("Connecting tab signals for tutorial window")
+	if tutorial_window and tutorial_window.has_node("TabContainer"):
+		var tab_container = tutorial_window.get_node("TabContainer")
+		print("Found tab container:", tab_container)
+		if not tab_container.is_connected("tab_changed", Callable(tutorial_window, "_on_tab_changed")):
+			print("Connecting tab_changed signal")
+			tab_container.tab_changed.connect(Callable(tutorial_window, "_on_tab_changed"))
+		else:
+			print("Signal was already connected")
+	else:
+		print("Could not find TabContainer in tutorial window")
+	
 	# Initialize audio players
 	if enable_sounds:
 		_setup_audio_players()
