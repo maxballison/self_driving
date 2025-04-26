@@ -62,6 +62,13 @@ var step_speed      : float = 4.0      # ≈ units / second (tweak to taste)
 
 var old_direction: Vector3 = Vector3.ZERO  # Store previous direction
 
+const PASSENGER = "passenger"
+const DESTINATION = "destination"
+const EDGE = "edge"
+const WALL = "wall"
+const CHECK_DISTANCE = 1  # How far to check
+const CHECK_SHAPE_SIZE = Vector3(1.2, 0.5, 1.2)
+
 # helper
 func _snap_to_grid(v : Vector3) -> Vector3:
 	return Vector3(round(v.x), v.y, round(v.z))
@@ -444,8 +451,250 @@ func turnright() -> void:
 		print("Turn Right command ignored: Turn already in progress.")
 
 
-# wait function removed
 
+func checkleft(check_type: String) -> bool:
+	print("DEBUG: checkleft called with type: ", check_type)
+	
+	# Create a position to the left of the car
+	var check_center = global_position - current_direction.cross(Vector3.UP).normalized() * CHECK_DISTANCE
+	
+	# Use direct space state query
+	var space_state = get_world_3d().direct_space_state
+	var params = PhysicsShapeQueryParameters3D.new()
+	
+	# Create a box shape
+	var shape = BoxShape3D.new()
+	shape.size = CHECK_SHAPE_SIZE
+	params.set_shape(shape)
+	params.transform = Transform3D(Basis(), check_center)
+	
+	# Set collision mask to detect everything of interest
+	params.collision_mask = 31  # Layers 1-5
+	
+	# Execute the query
+	var result = space_state.intersect_shape(params)
+	print("DEBUG: Direct check left found ", result.size(), " objects")
+	
+	# For debugging, print what was found
+	for hit in result:
+		var obj = hit["collider"]
+		print("DEBUG: Left check found: ", obj.name, " of type: ", obj.get_class())
+	
+	# Process these results
+	var direct_bodies = []
+	var direct_areas = []
+	
+	for hit in result:
+		var obj = hit["collider"]
+		if obj is Area3D:
+			direct_areas.append(obj)
+		else:
+			direct_bodies.append(obj)
+			
+	return _process_check_result(check_type, direct_bodies, direct_areas)
+
+func checkright(check_type: String) -> bool:
+	print("DEBUG: checkright called with type: ", check_type)
+	
+	# Create a position to the right of the car
+	
+	var check_center = global_position + current_direction.cross(Vector3.UP).normalized() * CHECK_DISTANCE
+	
+	# Use direct space state query
+	var space_state = get_world_3d().direct_space_state
+	var params = PhysicsShapeQueryParameters3D.new()
+	
+	# Create a box shape
+	var shape = BoxShape3D.new()
+	shape.size = CHECK_SHAPE_SIZE
+	params.set_shape(shape)
+	params.transform = Transform3D(Basis(), check_center)
+	
+	# Set collision mask to detect everything of interest
+	params.collision_mask = 31  # Layers 1-5
+	
+	# Execute the query
+	var result = space_state.intersect_shape(params)
+	print("DEBUG: Direct check right found ", result.size(), " objects")
+	
+	# For debugging, print what was found
+	for hit in result:
+		var obj = hit["collider"]
+		print("DEBUG: Right check found: ", obj.name, " of type: ", obj.get_class())
+	
+	# Process these results
+	var direct_bodies = []
+	var direct_areas = []
+	
+	for hit in result:
+		var obj = hit["collider"]
+		if obj is Area3D:
+			direct_areas.append(obj)
+		else:
+			direct_bodies.append(obj)
+			
+	return _process_check_result(check_type, direct_bodies, direct_areas)
+
+func checkfront(check_type: String) -> bool:
+	print("DEBUG: checkfront called with type: ", check_type)
+	
+	# Create a position in front of the car
+	var check_center = global_position + current_direction.normalized() * CHECK_DISTANCE
+	
+	# Use direct space state query
+	var space_state = get_world_3d().direct_space_state
+	var params = PhysicsShapeQueryParameters3D.new()
+	
+	# Create a box shape
+	var shape = BoxShape3D.new()
+	shape.size = CHECK_SHAPE_SIZE
+	params.set_shape(shape)
+	params.transform = Transform3D(Basis(), check_center)
+	
+	# Set collision mask to detect everything of interest
+	params.collision_mask = 31  # Layers 1-5
+	
+	# Execute the query
+	var result = space_state.intersect_shape(params)
+	print("DEBUG: Direct check front found ", result.size(), " objects")
+	
+	# For debugging, print what was found
+	for hit in result:
+		var obj = hit["collider"]
+		print("DEBUG: Front check found: ", obj.name, " of type: ", obj.get_class())
+	
+	# Process these results
+	var direct_bodies = []
+	var direct_areas = []
+	
+	for hit in result:
+		var obj = hit["collider"]
+		if obj is Area3D:
+			direct_areas.append(obj)
+		else:
+			direct_bodies.append(obj)
+			
+	return _process_check_result(check_type, direct_bodies, direct_areas)
+# Helper function to process check results with debugging
+func _process_check_result(check_type: String, bodies: Array, areas: Array) -> bool:
+	print("DEBUG: Processing check result for type: ", check_type)
+	
+	# Convert the check_type to string if it's not already
+	var check_type_str = String(check_type)
+	var check_type_lower = check_type_str.to_lower()
+	
+	print("DEBUG: Converted check type: ", check_type_str, " (lower: ", check_type_lower, ")")
+	
+	# Handle both variable references and string constants
+	if check_type_str == "PASSENGER" or check_type_lower == "passenger":
+		print("DEBUG: Checking for passenger")
+		# Check for passengers in bodies
+		for body in bodies:
+			print("DEBUG: Examining body: ", body.name)
+			
+			# More thorough passenger detection
+			var is_passenger = false
+			
+			# Direct method check
+			if body.has_method("is_passenger"):
+				is_passenger = true
+			
+			# Name check
+			elif "passenger" in body.name.to_lower():
+				is_passenger = true
+			
+			# Group check
+			elif body.is_in_group("passengers"):
+				is_passenger = true
+			
+			# Parent check
+			elif body.get_parent() and body.get_parent().has_method("is_passenger"):
+				is_passenger = true
+			elif body.get_parent() and "passenger" in body.get_parent().name.to_lower():
+				is_passenger = true
+			elif body.get_parent() and body.get_parent().is_in_group("passengers"):
+				is_passenger = true
+				
+			if is_passenger:
+				print("DEBUG: Found passenger: ", body.name)
+				return true
+				
+		print("DEBUG: No passenger found")
+	
+	elif check_type_str == "DESTINATION" or check_type_lower == "destination":
+		print("DEBUG: Checking for destination")
+		# Check for destinations in areas
+		for area in areas:
+			# Direct method check
+			if area.has_method("is_destination"):
+				print("DEBUG: Found destination via method: ", area.name)
+				return true
+			
+			# Name check
+			if "destination" in area.name.to_lower():
+				print("DEBUG: Found destination via name: ", area.name)
+				return true
+				
+			# Group check
+			if area.is_in_group("destinations"):
+				print("DEBUG: Found destination via group: ", area.name)
+				return true
+				
+			# Parent check
+			if area.get_parent() and area.get_parent().has_method("is_destination"):
+				print("DEBUG: Found destination via parent method: ", area.get_parent().name)
+				return true
+			if area.get_parent() and "destination" in area.get_parent().name.to_lower():
+				print("DEBUG: Found destination via parent name: ", area.get_parent().name)
+				return true
+			if area.get_parent() and area.get_parent().is_in_group("destinations"):
+				print("DEBUG: Found destination via parent group: ", area.get_parent().name)
+				return true
+		
+		# Also check bodies for destinations (since some might be CollisionObjects)
+		for body in bodies:
+			# Same checks as for areas
+			if body.has_method("is_destination") or "destination" in body.name.to_lower() or body.is_in_group("destinations"):
+				print("DEBUG: Found destination in body: ", body.name)
+				return true
+				
+			if body.get_parent() and (body.get_parent().has_method("is_destination") or 
+									  "destination" in body.get_parent().name.to_lower() or
+									  body.get_parent().is_in_group("destinations")):
+				print("DEBUG: Found destination via parent body: ", body.get_parent().name)
+				return true
+				
+		print("DEBUG: No destination found")
+	
+	elif check_type_str == "EDGE" or check_type_lower == "edge":
+		print("DEBUG: Checking for edge")
+		# Check if we're at an edge by examining wheel contact
+		var wheel_info = _check_grounded_detailed()
+		var result = wheel_info.wheels_on_ground > 0 and wheel_info.wheels_on_ground < 4
+		print("DEBUG: Edge check result: ", result, " (wheels on ground: ", wheel_info.wheels_on_ground, ")")
+		return result
+	
+	elif check_type_str == "WALL" or check_type_lower == "wall":
+		print("DEBUG: Checking for wall")
+		# Check for walls in bodies
+		for body in bodies:
+			if "wall" in body.name.to_lower() or body.is_in_group("walls"):
+				print("DEBUG: Found wall: ", body.name)
+				return true
+				
+			if body.get_parent() and ("wall" in body.get_parent().name.to_lower() or body.get_parent().is_in_group("walls")):
+				print("DEBUG: Found wall via parent: ", body.get_parent().name)
+				return true
+				
+		print("DEBUG: No wall found")
+	
+	# Default: no match found
+	print("DEBUG: No match found for check type: ", check_type_str)
+	return false
+	
+	# Default: no match found
+	print("DEBUG: No match found for check type: ", check_type_str)
+	return false
 func pickup() -> bool:
 	if current_passengers.size() >= max_passengers:
 		print("Car is full! Cannot pick up more passengers.")

@@ -246,6 +246,23 @@ func _interpret_line(line: String, indent_level: int) -> String:
 		# Possible function call
 		var result_ok = await _interpret_function_call(line)
 		return "NONE" if result_ok else "ERROR"
+	
+	elif line.begins_with("if ") and line.ends_with(":"):
+		return await _handle_if_statement(line, indent_level)
+	elif line.begins_with("elif ") and line.ends_with(":"):
+		return await _handle_elif_statement(line, indent_level)
+	elif line.begins_with("else:"):
+		return await _handle_else_statement(line, indent_level)
+	# ... existing code for other statements
+	elif line.begins_with("checkleft(") or line.begins_with("not checkleft("):
+		var result = await _interpret_check_function(line, "checkleft")
+		return "NONE" if result != null else "ERROR"
+	elif line.begins_with("checkright(") or line.begins_with("not checkright("):
+		var result = await _interpret_check_function(line, "checkright")
+		return "NONE" if result != null else "ERROR"
+	elif line.begins_with("checkfront(") or line.begins_with("not checkfront("):
+		var result = await _interpret_check_function(line, "checkfront")
+		return "NONE" if result != null else "ERROR"
 	else:
 		push_warning("Unrecognized statement: %s" % line)
 		return "NONE"
@@ -360,35 +377,161 @@ func _handle_for_loop(line: String, indent_level: int) -> String:
 		return "ERROR"
 
 func _handle_if_statement(line: String, indent_level: int) -> String:
-	# e.g., "if x > 0:"
-	# If condition is true, process the block in a new scope; otherwise, skip it
-
 	var stripped = line.strip_edges()
 	var after_if = stripped.substr(3, stripped.length() - 4).strip_edges()  # remove "if " and ":"
 	var cond_str = after_if
-
+	
 	var block_start = current_line
 	var block_end = _find_block_end(block_start, indent_level + 1)
-
-	if _eval_condition(cond_str):
+	
+	# Handle negation
+	var negate_result = false
+	if cond_str.begins_with("not "):
+		negate_result = true
+		cond_str = cond_str.substr(4).strip_edges()  # remove "not "
+	
+	# Evaluate the condition
+	var condition_result = _eval_condition(cond_str)
+	
+	# Apply negation if needed
+	if negate_result:
+		condition_result = not condition_result
+	
+	if condition_result:
+		# Execute the if block
 		push_scope()
 		current_line = block_start
 		await _run_interpreter(indent_level + 1)
 		pop_scope()
 	else:
-		# Check for an else block
-		var else_line = block_end
-		if else_line < code_lines.size():
-			var else_line_text = code_lines[else_line].strip_edges()
-			if else_line_text == "else:":
-				current_line = else_line + 1
-				push_scope()
-				await _run_interpreter(indent_level + 1)
-				pop_scope()
+		# Skip to the end of the block
+		current_line = block_end
+		
+		# Check for elif or else
+		if current_line < code_lines.size():
+			var next_line = code_lines[current_line].strip_edges()
+			if next_line.begins_with("elif ") or next_line == "else:":
+				# Let the interpreter handle the elif/else
 				return "NONE"
 	
-	current_line = block_end
+	# If we didn't hit an elif/else or the if condition was true,
+	# we need to skip past all elif/else blocks
+	while current_line < code_lines.size():
+		var next_line = code_lines[current_line].strip_edges()
+		if next_line.begins_with("elif ") or next_line == "else:":
+			# Skip this block
+			current_line = _find_block_end(current_line + 1, indent_level + 1)
+		else:
+			break
+	
 	return "NONE"
+
+# New function to handle elif statements
+func _handle_elif_statement(line: String, indent_level: int) -> String:
+	var stripped = line.strip_edges()
+	var after_elif = stripped.substr(5, stripped.length() - 6).strip_edges()  # remove "elif " and ":"
+	var cond_str = after_elif
+	
+	var block_start = current_line
+	var block_end = _find_block_end(block_start, indent_level + 1)
+	
+	# Handle negation
+	var negate_result = false
+	if cond_str.begins_with("not "):
+		negate_result = true
+		cond_str = cond_str.substr(4).strip_edges()  # remove "not "
+	
+	# Evaluate the condition
+	var condition_result = _eval_condition(cond_str)
+	
+	# Apply negation if needed
+	if negate_result:
+		condition_result = not condition_result
+	
+	if condition_result:
+		# Execute the elif block
+		push_scope()
+		current_line = block_start
+		await _run_interpreter(indent_level + 1)
+		pop_scope()
+		
+		# After executing the elif block, skip all remaining elif/else blocks
+		while current_line < code_lines.size():
+			var next_line = code_lines[current_line].strip_edges()
+			if next_line.begins_with("elif ") or next_line == "else:":
+				current_line = _find_block_end(current_line + 1, indent_level + 1)
+			else:
+				break
+	else:
+		# Skip to the end of the block
+		current_line = block_end
+		
+		# Let the next elif/else be processed by the interpreter
+	
+	return "NONE"
+
+# New function to handle else statements
+func _handle_else_statement(line: String, indent_level: int) -> String:
+	var block_start = current_line
+	var block_end = _find_block_end(block_start, indent_level + 1)
+	
+	# Execute the else block
+	push_scope()
+	current_line = block_start
+	await _run_interpreter(indent_level + 1)
+	pop_scope()
+	
+	# After executing, set position to the end of the block
+	current_line = block_end
+	
+	return "NONE"
+
+# New function to handle the check functions
+func _interpret_check_function(line: String, func_name: String) -> Variant:
+	var has_not = false
+	var start_index = 0
+	
+	# Check if there's a "not " prefix
+	if line.begins_with("not "):
+		has_not = true
+		start_index = 4  # Skip "not "
+	
+	# Extract the function name and parameter
+	var func_call = line.substr(start_index)
+	var param_start = func_call.find("(") + 1
+	var param_end = func_call.find(")")
+	
+	if param_start <= 0 or param_end <= param_start:
+		push_error("Invalid check function syntax: " + line)
+		return null
+	
+	var check_type = func_call.substr(param_start, param_end - param_start).strip_edges()
+	
+	# Parse the check type parameter
+	var check_value = _parse_value(check_type)
+	
+	# Call the appropriate check function on the player
+	if player:
+		var result: bool
+		match func_name:
+			"checkleft":
+				result = player.checkleft(check_value)
+			"checkright":
+				result = player.checkright(check_value)
+			"checkfront":
+				result = player.checkfront(check_value)
+			_:
+				push_error("Unknown check function: " + func_name)
+				return null
+		
+		# Apply negation if needed
+		if has_not:
+			return not result
+		else:
+			return result
+	else:
+		push_error("No player assigned to interpreter")
+		return null
 
 func _handle_while_loop(line: String, indent_level: int) -> String:
 	# e.g., "while x > 0:"
@@ -572,45 +715,98 @@ func _interpret_function_call(line: String) -> bool:
 # EXPRESSION / CONDITION PARSING
 # ----------------------------------------------------------------------
 func _eval_condition(cond_str: String) -> bool:
+	
+	if " and " in cond_str:
+		var parts = cond_str.split(" and ")
+		for part in parts:
+			if not _eval_condition(part.strip_edges()):
+				return false
+		return true
+	
+	# Handle logical OR
+	if " or " in cond_str:
+		var parts = cond_str.split(" or ")
+		for part in parts:
+			if _eval_condition(part.strip_edges()):
+				return true
+		return false
+	# First check if this is a function call
+	if "(" in cond_str and ")" in cond_str and not (" == " in cond_str or " != " in cond_str or " > " in cond_str or " < " in cond_str or " >= " in cond_str or " <= " in cond_str):
+		# This is a function call like checkleft(EDGE)
+		var func_name_end = cond_str.find("(")
+		if func_name_end <= 0:
+			push_error("Invalid function call syntax: %s" % cond_str)
+			return false
+			
+		var func_name = cond_str.substr(0, func_name_end).strip_edges()
+		var param_str = _extract_between(cond_str, "(", ")")
+		
+		# Handle check functions directly
+		if func_name in ["checkleft", "checkright", "checkfront"]:
+			if not player:
+				push_error("No player assigned to interpreter for check function")
+				return false
+				
+			# Get the parameter value - should be a constant like PASSENGER or EDGE
+			var param_value = param_str.strip_edges()
+			
+			# Execute the appropriate check function on the player
+			match func_name:
+				"checkleft":
+					return player.checkleft(param_value)
+				"checkright":
+					return player.checkright(param_value)
+				"checkfront":
+					return player.checkfront(param_value)
+				_:
+					push_error("Unknown check function: " + func_name)
+					return false
+		else:
+			# For other function calls, try to execute them normally
+			# (This would need more implementation if you have other functions to call)
+			push_error("Unsupported function in condition: %s" % func_name)
+			return false
+	
+	# Handle standard comparison operators
 	if " == " in cond_str:
 		var parts = cond_str.split(" == ")
 		if parts.size() == 2:
-			var left = _parse_value(parts[0].strip_edges())
-			var right = _parse_value(parts[1].strip_edges())
+			var left = _evaluate_expression(parts[0].strip_edges())
+			var right = _evaluate_expression(parts[1].strip_edges())
 			return left == right
 	elif " != " in cond_str:
 		var parts = cond_str.split(" != ")
 		if parts.size() == 2:
-			var left = _parse_value(parts[0].strip_edges())
-			var right = _parse_value(parts[1].strip_edges())
+			var left = _evaluate_expression(parts[0].strip_edges()) 
+			var right = _evaluate_expression(parts[1].strip_edges())
 			return left != right
 	elif " > " in cond_str:
 		var parts = cond_str.split(" > ")
 		if parts.size() == 2:
-			var left = _parse_value(parts[0].strip_edges())
-			var right = _parse_value(parts[1].strip_edges())
+			var left = _evaluate_expression(parts[0].strip_edges())
+			var right = _evaluate_expression(parts[1].strip_edges())
 			return left > right
 	elif " < " in cond_str:
 		var parts = cond_str.split(" < ")
 		if parts.size() == 2:
-			var left = _parse_value(parts[0].strip_edges())
-			var right = _parse_value(parts[1].strip_edges())
+			var left = _evaluate_expression(parts[0].strip_edges())
+			var right = _evaluate_expression(parts[1].strip_edges())
 			return left < right
 	elif " >= " in cond_str:
 		var parts = cond_str.split(" >= ")
 		if parts.size() == 2:
-			var left = _parse_value(parts[0].strip_edges())
-			var right = _parse_value(parts[1].strip_edges())
+			var left = _evaluate_expression(parts[0].strip_edges())
+			var right = _evaluate_expression(parts[1].strip_edges())
 			return left >= right
 	elif " <= " in cond_str:
 		var parts = cond_str.split(" <= ")
 		if parts.size() == 2:
-			var left = _parse_value(parts[0].strip_edges())
-			var right = _parse_value(parts[1].strip_edges())
+			var left = _evaluate_expression(parts[0].strip_edges())
+			var right = _evaluate_expression(parts[1].strip_edges())
 			return left <= right
 	
 	# If no operators found, check if the value itself is truthy
-	var val = _parse_value(cond_str)
+	var val = _evaluate_expression(cond_str)
 	if val == null:
 		return false
 	if val is int and val == 0:
@@ -620,6 +816,46 @@ func _eval_condition(cond_str: String) -> bool:
 	if val is String and val == "":
 		return false
 	return true
+
+# Add a new function to evaluate expressions including function calls
+func _evaluate_expression(expr: String) -> Variant:
+	# Check if this is a function call
+	if "(" in expr and ")" in expr:
+		var func_name_end = expr.find("(")
+		if func_name_end <= 0:
+			push_error("Invalid function call syntax: %s" % expr)
+			return null
+			
+		var func_name = expr.substr(0, func_name_end).strip_edges()
+		var param_str = _extract_between(expr, "(", ")")
+		
+		# Handle check functions directly
+		if func_name in ["checkleft", "checkright", "checkfront"]:
+			if not player:
+				push_error("No player assigned to interpreter for check function")
+				return null
+				
+			# Get the parameter value - should be a constant like PASSENGER or EDGE
+			var param_value = param_str.strip_edges()
+			
+			# Execute the appropriate check function on the player
+			match func_name:
+				"checkleft":
+					return player.checkleft(param_value)
+				"checkright":
+					return player.checkright(param_value)
+				"checkfront":
+					return player.checkfront(param_value)
+				_:
+					push_error("Unknown check function: " + func_name)
+					return null
+		else:
+			# For other function calls (would need more implementation)
+			push_error("Unsupported function in expression: %s" % func_name)
+			return null
+	
+	# If not a function call, use the normal parse value
+	return _parse_value(expr)
 
 func _parse_value(value_raw: String) -> Variant:
 	var trimmed = value_raw.strip_edges()
