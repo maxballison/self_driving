@@ -425,6 +425,13 @@ func brake() -> void:
 
 
 func turnleft() -> void:
+	# Check if all wheels are on the ground
+	var wheel_info = _check_grounded_detailed()
+	if wheel_info.wheels_on_ground < 4:
+		# Car is not fully grounded, so don't allow turning
+		print("Turn Left command ignored: Car is not fully grounded.")
+		return
+		
 	turn_direction = 1
 	if not turn_in_progress:
 		# REMOVED await here. Just start the turn.
@@ -436,6 +443,13 @@ func turnleft() -> void:
 
 
 func turnright() -> void:
+	# Check if all wheels are on the ground
+	var wheel_info = _check_grounded_detailed()
+	if wheel_info.wheels_on_ground < 4:
+		# Car is not fully grounded, so don't allow turning
+		print("Turn Right command ignored: Car is not fully grounded.")
+		return
+		
 	turn_direction = -1
 	if not turn_in_progress:
 		# REMOVED await here. Just start the turn.
@@ -443,7 +457,6 @@ func turnright() -> void:
 		_perform_turn()
 	else:
 		print("Turn Right command ignored: Turn already in progress.")
-
 
 
 func checkleft(check_type: String) -> bool:
@@ -637,10 +650,47 @@ func _process_check_result(check_type: String, bodies: Array, areas: Array) -> b
 				
 	
 	elif check_type_str == "EDGE" or check_type_lower == "edge":
-		# Check if we're at an edge by examining wheel contact
-		var wheel_info = _check_grounded_detailed()
-		var result = wheel_info.wheels_on_ground > 0 and wheel_info.wheels_on_ground < 4
-		return result
+		# Check for absence of floor at the check position
+		var has_floor = false
+		
+		# Check all bodies from the shape query
+		for body in bodies:
+			# Check for floor/ground collision (Unity floor collision, floor groups, or floor-related names)
+			if body.name == "UnifiedFloorCollision" or "floor" in body.name.to_lower() or "ground" in body.name.to_lower() or "tile" in body.name.to_lower() or body.is_in_group("floor") or body.is_in_group("road"):
+				has_floor = true
+				break
+				
+			# Also check the parent
+			if body.get_parent() and (
+			   body.get_parent().name == "UnifiedFloorCollision" or 
+			   "floor" in body.get_parent().name.to_lower() or 
+			   "ground" in body.get_parent().name.to_lower() or 
+			   "tile" in body.get_parent().name.to_lower() or
+			   body.get_parent().is_in_group("floor") or 
+			   body.get_parent().is_in_group("road")):
+				has_floor = true
+				break
+		
+		# If we haven't found a floor yet, check areas
+		if not has_floor:
+			# Check all areas from the shape query (in case floor is an area)
+			for area in areas:
+				if "floor" in area.name.to_lower() or "ground" in area.name.to_lower() or "tile" in area.name.to_lower() or area.is_in_group("floor") or area.is_in_group("road"):
+					has_floor = true
+					break
+					
+				# Also check the parent
+				if area.get_parent() and (
+				   "floor" in area.get_parent().name.to_lower() or 
+				   "ground" in area.get_parent().name.to_lower() or 
+				   "tile" in area.get_parent().name.to_lower() or
+				   area.get_parent().is_in_group("floor") or 
+				   area.get_parent().is_in_group("road")):
+					has_floor = true
+					break
+		
+		# If no floor was found, we're at an edge
+		return !has_floor
 	
 	elif check_type_str == "WALL" or check_type_lower == "wall":
 		# Check for walls in bodies

@@ -20,6 +20,8 @@ var code_editor = null
 
 const STANDARD_INDENT_STEP = 4
 
+@export var step_delay: float = 0.1 
+
 func _ready() -> void:
 	# Find the code editor for line highlighting
 	code_editor = get_node_or_null("/root/Main/CodeEditorImproved")
@@ -92,91 +94,66 @@ func _run_interpreter(indent_level: int) -> Variant: # Return value might be use
 		var line_full: String = code_lines[current_line]
 		var line_strip: String = line_full.strip_edges()
 		var line_indent: int = _count_indent(line_full)
+		var line_number_to_interpret = current_line # Store line number before potential skips
 
 		# --- Indentation Handling ---
-		# 1. Skip genuinely empty lines completely, regardless of expected indent
 		if line_strip == "":
 			current_line += 1
-			continue # Move to the next line
-
-		# 2. Check if this line marks the end of the current block
+			continue
 		if line_indent < indent_level:
-			# We've found a line with less indentation than expected for this block.
-			# This signifies the end of the block we are currently executing.
-			# Do NOT increment current_line here; the caller needs to resume from this line.
-			return "BLOCK_ENDED" # Return a status indicating why we exited
-
-		# 3. Check if this line has MORE indentation than expected
-		#    This could be the start of a nested block handled by a recursive call later,
-		#    or simply an incorrectly indented line. For now, skip it at this level.
+			return "BLOCK_ENDED"
 		if line_indent > indent_level:
-			# This line is indented deeper than the current block level.
-			# It's not part of *this* level's direct execution flow.
-			# The handlers (like _handle_if) will manage nested blocks.
-			# Or, if it's just a random indent, it's effectively skipped.
 			push_warning("Skipping line %d due to unexpected indentation level %d (expected %d)." % [current_line, line_indent, indent_level])
 			current_line += 1
-			continue # Move to the next line
-
-		# --- Line Belongs to Current Block (line_indent == indent_level) ---
-		# Store current line number before potentially incrementing for interpretation
-		var line_number_to_interpret = current_line
-		var line_content_to_interpret = line_strip # Use the stripped line for interpretation
-
-		# Increment current_line NOW so recursive calls or next iteration start correctly
-		current_line += 1
-
-		# Highlight the line (if editor exists)
-		if code_editor != null and code_editor.has_method("highlight_executing_line"):
-			# Maybe exclude highlighting for control flow keywords themselves? Optional.
-			# if not line_content_to_interpret.begins_with("if ") and ...
-			code_editor.highlight_executing_line(line_number_to_interpret)
-
-		# Skip comments (already checked for empty lines)
-		if line_content_to_interpret.begins_with("#"):
 			continue
 
-		# Skip function declarations (already registered)
+		# --- Line Belongs to Current Block (line_indent == indent_level) ---
+		var line_content_to_interpret = line_strip
+		current_line += 1 # Increment BEFORE interpreting the current line
+
+		# --- Highlighting, Comments, Func Defs ---
+		if code_editor != null and code_editor.has_method("highlight_executing_line"):
+			code_editor.highlight_executing_line(line_number_to_interpret)
+		if line_content_to_interpret.begins_with("#"):
+			continue
 		if line_content_to_interpret.begins_with("func ") and line_content_to_interpret.ends_with(":"):
-			# Need to skip the entire function body
-			var func_block_end = _find_block_end(current_line, line_indent + 1)
-			current_line = func_block_end # Jump past the function definition
+			current_line = _find_block_end(current_line, line_indent + STANDARD_INDENT_STEP)
 			continue
 
 		# --- Interpret the actual line ---
-		var result = await _interpret_line(line_content_to_interpret, indent_level)
+		# Store result in a variable to check status
+		var interpret_result = await _interpret_line(line_content_to_interpret, indent_level)
 
-		# Handle results from _interpret_line (like STOPPED, ERROR, RETURN)
-		# Assuming _interpret_line now returns strings like "NONE", "STOPPED", "ERROR", "RETURN", "MOVE" etc.
-		match result:
+		# --- Handle results ---
+		match interpret_result:
 			"STOPPED":
-				is_running = false # Ensure interpreter stops
-				return "STOPPED" # Propagate stop signal
-			"ERROR":
-				push_error("Error encountered on line %d: %s" % [line_number_to_interpret, line_content_to_interpret])
 				is_running = false
-				return "ERROR" # Propagate error signal
+				return "STOPPED"
+			"ERROR":
+				push_error("Error encountered interpreting line %d: %s" % [line_number_to_interpret, line_content_to_interpret])
+				is_running = false
+				return "ERROR"
 			"RETURN":
-				# A 'return' statement was hit inside a function being run by this interpreter instance.
-				# Stop processing this block and return control.
-				return "RETURN" # Signal function return
-			# "MOVE", "WAIT" etc. might require specific actions here if not handled by await directly
-			# For now, assume await handles pausing, and we just continue if NONE
+				return "RETURN"
+			# Other results ("NONE", "MOVE") just continue
 
-		# Check if stopped externally during await
+		# --- Check if stopped externally during await ---
 		if not is_running:
 			return "STOPPED"
 
-	# If the loop finishes because current_line reached the end of the code
-	if current_line >= code_lines.size():
-		return "END_OF_FILE"
+		# ---> ADD BASELINE DELAY HERE <---
+		if step_delay > 0.0:
+			 # Check is_running again in case the delay itself is interrupted
+			if not is_running: return "STOPPED"
+			 # Wait for the specified delay
+			await get_tree().create_timer(step_delay).timeout
+			 # Check one more time after the timer finishes
+			if not is_running: return "STOPPED"
 
-	# If the loop finished because is_running became false
-	if not is_running:
-		return "STOPPED"
-
-	# Should ideally not be reached if logic is sound
-	return "UNKNOWN_EXIT"
+	# --- Loop Exit Reasons ---
+	if current_line >= code_lines.size(): return "END_OF_FILE"
+	if not is_running: return "STOPPED"
+	return "UNKNOWN_EXIT" # Should not happen
 
 # ----------------------------------------------------------------------
 # SCOPING HELPERS
