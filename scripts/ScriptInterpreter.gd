@@ -18,6 +18,8 @@ var is_running: bool = false
 
 var code_editor = null
 
+const STANDARD_INDENT_STEP = 4
+
 func _ready() -> void:
 	# Find the code editor for line highlighting
 	code_editor = get_node_or_null("/root/Main/CodeEditorImproved")
@@ -85,55 +87,96 @@ func _register_functions() -> void:
 			line_idx += 1
 
 # Main interpreter logic: processes lines, handles control structures, and yields when needed
-func _run_interpreter(indent_level: int) -> void:
+func _run_interpreter(indent_level: int) -> Variant: # Return value might be useful later
 	while current_line < code_lines.size() and is_running:
 		var line_full: String = code_lines[current_line]
-		var line: String = line_full.strip_edges()  # remove leading/trailing whitespace
+		var line_strip: String = line_full.strip_edges()
 		var line_indent: int = _count_indent(line_full)
 
-		# If this line's indent is less than the current block's indent,
-		# we've reached the end of this block, so return
+		# --- Indentation Handling ---
+		# 1. Skip genuinely empty lines completely, regardless of expected indent
+		if line_strip == "":
+			current_line += 1
+			continue # Move to the next line
+
+		# 2. Check if this line marks the end of the current block
 		if line_indent < indent_level:
-			return
+			# We've found a line with less indentation than expected for this block.
+			# This signifies the end of the block we are currently executing.
+			# Do NOT increment current_line here; the caller needs to resume from this line.
+			return "BLOCK_ENDED" # Return a status indicating why we exited
 
-		# Store current line number before incrementing
-		var line_number = current_line
-		
-		# Highlight the current line in the code editor (for most statements)
-		# For wait(), we'll handle highlighting separately
-		if not line.begins_with("wait(") and code_editor != null and code_editor.has_method("highlight_executing_line"):
-			code_editor.highlight_executing_line(line_number)
+		# 3. Check if this line has MORE indentation than expected
+		#    This could be the start of a nested block handled by a recursive call later,
+		#    or simply an incorrectly indented line. For now, skip it at this level.
+		if line_indent > indent_level:
+			# This line is indented deeper than the current block level.
+			# It's not part of *this* level's direct execution flow.
+			# The handlers (like _handle_if) will manage nested blocks.
+			# Or, if it's just a random indent, it's effectively skipped.
+			push_warning("Skipping line %d due to unexpected indentation level %d (expected %d)." % [current_line, line_indent, indent_level])
+			current_line += 1
+			continue # Move to the next line
 
+		# --- Line Belongs to Current Block (line_indent == indent_level) ---
+		# Store current line number before potentially incrementing for interpretation
+		var line_number_to_interpret = current_line
+		var line_content_to_interpret = line_strip # Use the stripped line for interpretation
+
+		# Increment current_line NOW so recursive calls or next iteration start correctly
 		current_line += 1
 
-		# Skip empty or comment lines
-		if line == "" or line.begins_with("#"):
-			continue
-			
-		# Skip function declarations in main execution, they were already registered
-		if line.begins_with("func ") and line.ends_with(":"):
-			current_line = _find_block_end(current_line, line_indent + 1)
+		# Highlight the line (if editor exists)
+		if code_editor != null and code_editor.has_method("highlight_executing_line"):
+			# Maybe exclude highlighting for control flow keywords themselves? Optional.
+			# if not line_content_to_interpret.begins_with("if ") and ...
+			code_editor.highlight_executing_line(line_number_to_interpret)
+
+		# Skip comments (already checked for empty lines)
+		if line_content_to_interpret.begins_with("#"):
 			continue
 
-		# Interpret the line, passing the indent level for control structures
-		var result: String = await _interpret_line(line, indent_level)
-'''
-		if result == "MOVE":
-			# Yield for run_delay seconds for move statements
-			var t = get_tree().create_timer(owner.run_delay)
-			await t.timeout
-		elif result == "WAIT":
-			# For wait() function - highlighting is handled by the wait function itself
-			pass
-		elif result == "ERROR":
-			push_error("Error in line: %s" % line)
-			return
-		elif result == "RETURN":
-			# Function is returning, so exit current block
-			return
-		
+		# Skip function declarations (already registered)
+		if line_content_to_interpret.begins_with("func ") and line_content_to_interpret.ends_with(":"):
+			# Need to skip the entire function body
+			var func_block_end = _find_block_end(current_line, line_indent + 1)
+			current_line = func_block_end # Jump past the function definition
+			continue
+
+		# --- Interpret the actual line ---
+		var result = await _interpret_line(line_content_to_interpret, indent_level)
+
+		# Handle results from _interpret_line (like STOPPED, ERROR, RETURN)
+		# Assuming _interpret_line now returns strings like "NONE", "STOPPED", "ERROR", "RETURN", "MOVE" etc.
+		match result:
+			"STOPPED":
+				is_running = false # Ensure interpreter stops
+				return "STOPPED" # Propagate stop signal
+			"ERROR":
+				push_error("Error encountered on line %d: %s" % [line_number_to_interpret, line_content_to_interpret])
+				is_running = false
+				return "ERROR" # Propagate error signal
+			"RETURN":
+				# A 'return' statement was hit inside a function being run by this interpreter instance.
+				# Stop processing this block and return control.
+				return "RETURN" # Signal function return
+			# "MOVE", "WAIT" etc. might require specific actions here if not handled by await directly
+			# For now, assume await handles pausing, and we just continue if NONE
+
+		# Check if stopped externally during await
 		if not is_running:
-			return'''
+			return "STOPPED"
+
+	# If the loop finishes because current_line reached the end of the code
+	if current_line >= code_lines.size():
+		return "END_OF_FILE"
+
+	# If the loop finished because is_running became false
+	if not is_running:
+		return "STOPPED"
+
+	# Should ideally not be reached if logic is sound
+	return "UNKNOWN_EXIT"
 
 # ----------------------------------------------------------------------
 # SCOPING HELPERS
@@ -171,115 +214,104 @@ func get_var(var_name: String) -> Variant:
 # "RETURN" => if we're returning from a function
 
 func _interpret_line(line: String, indent_level: int) -> String:
-	if line.begins_with("for ") and line.ends_with(":"):
-		return await _handle_for_loop(line, indent_level)
-	elif line.begins_with("if ") and line.ends_with(":"):
+	# --- Block Keywords First ---
+	if line.begins_with("if ") and line.ends_with(":"):
 		return await _handle_if_statement(line, indent_level)
+	elif line.begins_with("elif ") and line.ends_with(":"): # <<< Moved UP
+		return await _handle_elif_statement(line, indent_level)
+	elif line == "else:": # Exact match for else <<< Moved UP
+		return await _handle_else_statement(line, indent_level)
+	elif line.begins_with("for ") and line.ends_with(":"):
+		return await _handle_for_loop(line, indent_level)
 	elif line.begins_with("while ") and line.ends_with(":"):
 		return await _handle_while_loop(line, indent_level)
+	# NOTE: 'func' is handled directly in _run_interpreter to skip blocks
+
+	# --- Declaration / Return ---
 	elif line.begins_with("var "):
 		var result_ok = _interpret_var_declaration(line)
 		return "NONE" if result_ok else "ERROR"
+	elif line.begins_with("return"): # Handle return keyword
+		# Optional: Add logic here to parse a return value if needed
+		return "RETURN"
+
+	# --- Specific Known Command Functions ---
 	elif line.begins_with("gas("):
 		var ok = await _interpret_gas_statement(line)
-		if ok:
-			return "MOVE"
-		else:
-			return "ERROR"
+		return "MOVE" if ok else "ERROR" # Assuming gas() should yield like movement
 	elif line.begins_with("brake("):
 		var ok = await _interpret_brake_statement(line)
-		if ok:
-			return "NONE"
-		else:
-			return "ERROR"
+		return "NONE" if ok else "ERROR" # Brake might or might not need yield depending on await
 	elif line.begins_with("turnleft("):
 		var ok = await _interpret_turnleft_statement(line)
-		if ok:
-			return "MOVE"  # Yield for turn animation
-		else:
-			return "ERROR"
+		return "MOVE" if ok else "ERROR"
 	elif line.begins_with("turnright("):
 		var ok = await _interpret_turnright_statement(line)
-		if ok:
-			return "MOVE"  # Yield for turn animation
-		else:
-			return "ERROR"
-	# Add new function interpretations
+		return "MOVE" if ok else "ERROR"
 	elif line.begins_with("pickup("):
+		# Assuming pickup might have an animation/await later
 		var ok = _interpret_pickup_statement(line)
-		if ok:
-			return "MOVE"  # Yield for animation
-		else:
-			return "ERROR"
-	elif line.begins_with("dropoff("):  # Changed from drop_off to dropoff
+		return "MOVE" if ok else "ERROR" # Tentative: Treat as move for now
+	elif line.begins_with("dropoff("):
+		# Assuming dropoff might have an animation/await later
 		var ok = _interpret_dropoff_statement(line)
-		if ok:
-			return "MOVE"  # Yield for animation
-		else:
-			return "ERROR"
-	# Support older "deliver()" and "pick_up()"/"drop_off()" calls for backward compatibility
-	elif line.begins_with("deliver("):
+		return "MOVE" if ok else "ERROR" # Tentative: Treat as move for now
+	# Backward compatibility calls (if needed, keep them here)
+	elif line.begins_with("deliver("): # ... etc ...
 		var ok = _interpret_dropoff_statement(line.replace("deliver(", "dropoff("))
-		if ok:
-			return "MOVE"
-		else:
-			return "ERROR"
-	elif line.begins_with("pick_up("):
+		return "MOVE" if ok else "ERROR"
+	elif line.begins_with("pick_up("): # ... etc ...
 		var ok = _interpret_pickup_statement(line.replace("pick_up(", "pickup("))
-		if ok:
-			return "MOVE"
-		else:
-			return "ERROR"
-	elif line.begins_with("drop_off("):
+		return "MOVE" if ok else "ERROR"
+	elif line.begins_with("drop_off("): # ... etc ...
 		var ok = _interpret_dropoff_statement(line.replace("drop_off(", "dropoff("))
-		if ok:
-			return "MOVE"
-		else:
-			return "ERROR"
-	elif "=" in line and not line.begins_with("if ") and not line.begins_with("while "):
-		# Assignment statement (without var)
+		return "MOVE" if ok else "ERROR"
+
+	# --- Assignment ---
+	# Check for '=' ONLY if it's not part of a keyword line already handled
+	elif "=" in line:
+		# We already handled var, if, elif, while, for lines above.
+		# This should primarily catch variable re-assignment.
 		var result_ok = _interpret_assignment(line)
 		return "NONE" if result_ok else "ERROR"
-	elif line.begins_with("return"):
-		return "RETURN"
+
+	# --- Generic Function Call (User-defined or potentially built-ins not listed above) ---
+	# Check for parentheses AFTER specific keywords/commands
 	elif "(" in line and ")" in line:
-		# Possible function call
+		# This should now catch user function calls like my_func()
+		# Or potentially built-ins like checkleft() IF they were called standalone on a line
+		# (Standalone check calls usually don't make sense, they are used in conditions)
+		# Let's assume this is for user-defined functions for now.
 		var result_ok = await _interpret_function_call(line)
 		return "NONE" if result_ok else "ERROR"
-	
-	elif line.begins_with("if ") and line.ends_with(":"):
-		return await _handle_if_statement(line, indent_level)
-	elif line.begins_with("elif ") and line.ends_with(":"):
-		return await _handle_elif_statement(line, indent_level)
-	elif line.begins_with("else:"):
-		return await _handle_else_statement(line, indent_level)
-	# ... existing code for other statements
-	elif line.begins_with("checkleft(") or line.begins_with("not checkleft("):
-		var result = await _interpret_check_function(line, "checkleft")
-		return "NONE" if result != null else "ERROR"
-	elif line.begins_with("checkright(") or line.begins_with("not checkright("):
-		var result = await _interpret_check_function(line, "checkright")
-		return "NONE" if result != null else "ERROR"
-	elif line.begins_with("checkfront(") or line.begins_with("not checkfront("):
-		var result = await _interpret_check_function(line, "checkfront")
-		return "NONE" if result != null else "ERROR"
+
+	# --- Standalone Check Functions (Less common, but maybe for debugging?) ---
+	# If check functions are ONLY used in conditions, these checks might be redundant
+	# elif line.begins_with("checkleft(") or line.begins_with("not checkleft("):
+	#     var result = await _interpret_check_function(line, "checkleft") # Needs this function if standalone calls are allowed
+	#     return "NONE" if result != null else "ERROR"
+	# elif line.begins_with("checkright(") # ... etc ...
+	# elif line.begins_with("checkfront(") # ... etc ...
+
+	# --- Unrecognized Statement ---
 	else:
-		push_warning("Unrecognized statement: %s" % line)
-		return "NONE"
+		push_warning("Unrecognized statement on line: %s" % line)
+		# Decide if this should be an error or just skipped
+		return "NONE" # Treat as skippable for now, maybe return "ERROR"?
 
 # New function to interpret brake() statement
 func _interpret_brake_statement(line: String) -> bool:
-	var inside = _extract_between(line, "brake(", ")")
-	inside = inside.strip_edges()
-	
-	# Verify no arguments were passed
+	var inside = _extract_between(line, "brake(", ")").strip_edges()
 	if inside.length() > 0:
 		push_error("brake() doesn't take any parameters.")
 		return false
-		
+
 	if player:
-		player.brake()
-		await player.tile_reached
+		player.brake() # This now awaits tile_reached internally in the player func
+		await player.tile_reached # Wait for the signal from player.brake()
+		if not is_running:
+			push_warning("Interpreter stopped during brake() await.")
+			return false
 		return true
 	else:
 		push_error("No player assigned to interpreter.")
@@ -308,183 +340,219 @@ func _interpret_dropoff_statement(line: String) -> bool:
 		return false
 
 func _handle_for_loop(line: String, indent_level: int) -> String:
-	# e.g., "for i in range(3):"
-	# We'll process the block lines range_count times, each in its own scope
-
+	# e.g., "for i in range(3):" or "for i in range(1, 5):" etc.
 	var stripped = line.strip_edges()
-	var after_for = stripped.substr(4, stripped.length() - 5).strip_edges()  # remove "for " and ":"
-	
-	# Handle "for i in range(x)" format
-	if after_for.contains(" in range("):
-		var pieces = after_for.split(" in range(")
+	var after_for = stripped.substr(4, stripped.length() - 5).strip_edges() # remove "for " and ":"
+
+	if " in range(" in after_for:
+		var pieces = after_for.split(" in range(", true, 1)
 		if pieces.size() != 2:
 			push_error("Invalid for syntax: %s" % line)
 			return "ERROR"
-			
+
 		var var_name = pieces[0].strip_edges()
-		var range_str = pieces[1].strip_edges().replace(")", "")
-		
-		# Support range with arguments like range(1, 5) or range(0, 10, 2)
-		var range_args = range_str.split(",")
+		var range_str_raw = pieces[1].strip_edges()
+		if not range_str_raw.ends_with(")"):
+			push_error("Invalid range syntax (missing closing parenthesis?): %s" % line)
+			return "ERROR"
+		var range_str = range_str_raw.substr(0, range_str_raw.length() - 1) # Remove trailing ')'
+
+		var range_args_str = range_str.split(",")
+		var range_args_int = []
+		for arg_str in range_args_str:
+			var val = _parse_value(arg_str.strip_edges()) # Use parse_value to handle variables in range()
+			if val is int:
+				range_args_int.append(val)
+			else:
+				push_error("Range arguments must evaluate to integers: '%s' in %s" % [arg_str, line])
+				return "ERROR"
+
 		var start = 0
 		var end = 0
 		var step = 1
-		
-		if range_args.size() == 1:
-			# range(n) - from 0 to n-1
-			if not range_args[0].strip_edges().is_valid_int():
-				push_error("Range argument must be an integer: %s" % range_args[0])
-				return "ERROR"
-			end = int(range_args[0].strip_edges())
-		elif range_args.size() == 2:
-			# range(start, end) - from start to end-1
-			if not range_args[0].strip_edges().is_valid_int() or not range_args[1].strip_edges().is_valid_int():
-				push_error("Range arguments must be integers: %s" % range_str)
-				return "ERROR"
-			start = int(range_args[0].strip_edges())
-			end = int(range_args[1].strip_edges())
-		elif range_args.size() == 3:
-			# range(start, end, step)
-			if not range_args[0].strip_edges().is_valid_int() or not range_args[1].strip_edges().is_valid_int() or not range_args[2].strip_edges().is_valid_int():
-				push_error("Range arguments must be integers: %s" % range_str)
-				return "ERROR"
-			start = int(range_args[0].strip_edges())
-			end = int(range_args[1].strip_edges())
-			step = int(range_args[2].strip_edges())
+
+		if range_args_int.size() == 1:
+			end = range_args_int[0]
+		elif range_args_int.size() == 2:
+			start = range_args_int[0]
+			end = range_args_int[1]
+		elif range_args_int.size() == 3:
+			start = range_args_int[0]
+			end = range_args_int[1]
+			step = range_args_int[2]
 			if step == 0:
-				push_error("Range step cannot be zero")
+				push_error("Range step cannot be zero: %s" % line)
 				return "ERROR"
 		else:
-			push_error("Invalid range syntax: %s" % range_str)
+			push_error("Invalid number of range arguments: %s" % line)
 			return "ERROR"
 
 		var block_start = current_line
-		var block_end = _find_block_end(block_start, indent_level + 1)
+		var block_end = _find_block_end(block_start, indent_level + STANDARD_INDENT_STEP) # Use constant for finding end
 
 		var i = start
-		while (step > 0 and i < end) or (step < 0 and i > end):
+		while is_running and ((step > 0 and i < end) or (step < 0 and i > end)):
 			push_scope()
-			set_var(var_name, i)  # Set loop variable
+			set_var(var_name, i)
 			current_line = block_start
-			await _run_interpreter(indent_level + 1)
+			# FIX: Use STANDARD_INDENT_STEP
+			await _run_interpreter(indent_level + STANDARD_INDENT_STEP) # Recursive call for the block
+
+			# Check if execution was stopped during the awaited block
+			if not is_running:
+				pop_scope() # Ensure scope cleanup even if stopped
+				return "STOPPED" # Indicate interruption
+
 			pop_scope()
 			i += step
 
-		current_line = block_end
-		return "NONE"
+		# If the loop finished normally (not stopped), set current_line to after the block
+		if is_running:
+			current_line = block_end
+		return "NONE" # Indicate normal loop completion or interruption handled
 	else:
-		push_error("Unsupported for loop syntax: %s" % line)
+		push_error("Unsupported for loop syntax (only 'in range()' supported): %s" % line)
 		return "ERROR"
+
+
+func _find_end_of_if_elif_else_chain(start_search_line: int, base_indent: int) -> int:
+	var line_idx = start_search_line
+	while line_idx < code_lines.size():
+		var line_full = code_lines[line_idx]
+		var line = line_full.strip_edges()
+		# Skip empty lines when checking indentation
+		if line == "":
+			line_idx += 1
+			continue
+
+		var indent = _count_indent(line_full)
+
+		if indent == base_indent:
+			if line.begins_with("elif ") and line.ends_with(":"):
+				# Found an elif, need to skip its block and continue searching after it
+				var elif_block_end = _find_block_end(line_idx + 1, base_indent + 1)
+				line_idx = elif_block_end # Start searching again right after the elif block
+				continue # Continue the while loop from the new position
+			elif line == "else:":
+				# Found an else, need to skip its block. The chain ends after this block.
+				var else_block_end = _find_block_end(line_idx + 1, base_indent + 1)
+				line_idx = else_block_end # The chain ends here
+				break # Exit the while loop
+			else:
+				# Found a line at the same indent that is not elif/else, chain ends *before* this line
+				break # Exit the while loop, line_idx is the start of the next statement
+		elif indent < base_indent:
+			# Found a line with less indent, chain definitely ends *before* this line
+			break # Exit the while loop
+		else: # indent > base_indent
+			# This indicates an improperly indented line after a block, or an empty line.
+			# Let's treat it as the end of the chain for safety, though it might indicate a syntax error.
+			push_warning("Unexpected indentation level at line %d, ending if/elif/else chain search." % line_idx)
+			break
+
+	return line_idx # Returns the index of the first line *after* the entire chain
+
+
 
 func _handle_if_statement(line: String, indent_level: int) -> String:
 	var stripped = line.strip_edges()
-	var after_if = stripped.substr(3, stripped.length() - 4).strip_edges()  # remove "if " and ":"
+	var after_if = stripped.substr(3, stripped.length() - 4).strip_edges() # remove "if " and ":"
 	var cond_str = after_if
-	
+
 	var block_start = current_line
-	var block_end = _find_block_end(block_start, indent_level + 1)
-	
-	# Handle negation
-	var negate_result = false
-	if cond_str.begins_with("not "):
-		negate_result = true
-		cond_str = cond_str.substr(4).strip_edges()  # remove "not "
-	
-	# Evaluate the condition
+	# Calculate expected indent for the block content
+	var expected_block_indent = indent_level + STANDARD_INDENT_STEP
+	var block_end = _find_block_end(block_start, expected_block_indent)
+
+	# Evaluate the condition using the robust evaluator
 	var condition_result = _eval_condition(cond_str)
-	
-	# Apply negation if needed
-	if negate_result:
-		condition_result = not condition_result
-	
+	if not is_running: return "STOPPED" # Condition evaluation itself shouldn't stop, but check anyway
+
 	if condition_result:
 		# Execute the if block
 		push_scope()
 		current_line = block_start
-		await _run_interpreter(indent_level + 1)
+		# FIX: Use calculated expected_block_indent
+		await _run_interpreter(expected_block_indent)
+		# Check if stopped during the block execution
+		if not is_running:
+			pop_scope()
+			return "STOPPED"
 		pop_scope()
+
+		# If we executed the 'if' block, we need to skip past all subsequent elif/else blocks
+		current_line = _find_end_of_if_elif_else_chain(block_end, indent_level)
 	else:
-		# Skip to the end of the block
+		# Condition was false, skip the if block's code
 		current_line = block_end
-		
-		# Check for elif or else
-		if current_line < code_lines.size():
-			var next_line = code_lines[current_line].strip_edges()
-			if next_line.begins_with("elif ") or next_line == "else:":
-				# Let the interpreter handle the elif/else
-				return "NONE"
-	
-	# If we didn't hit an elif/else or the if condition was true,
-	# we need to skip past all elif/else blocks
-	while current_line < code_lines.size():
-		var next_line = code_lines[current_line].strip_edges()
-		if next_line.begins_with("elif ") or next_line == "else:":
-			# Skip this block
-			current_line = _find_block_end(current_line + 1, indent_level + 1)
-		else:
-			break
-	
+		# The main interpreter loop will naturally proceed to the next line,
+		# which might be an elif, else, or the statement after the whole structure.
+
 	return "NONE"
+
 
 # New function to handle elif statements
 func _handle_elif_statement(line: String, indent_level: int) -> String:
+	# This function should only be entered by the main loop if the preceding if/elif conditions were false.
 	var stripped = line.strip_edges()
-	var after_elif = stripped.substr(5, stripped.length() - 6).strip_edges()  # remove "elif " and ":"
+	var after_elif = stripped.substr(5, stripped.length() - 6).strip_edges() # remove "elif " and ":"
 	var cond_str = after_elif
-	
+
 	var block_start = current_line
-	var block_end = _find_block_end(block_start, indent_level + 1)
-	
-	# Handle negation
-	var negate_result = false
-	if cond_str.begins_with("not "):
-		negate_result = true
-		cond_str = cond_str.substr(4).strip_edges()  # remove "not "
-	
-	# Evaluate the condition
+	# Calculate expected indent for the block content
+	var expected_block_indent = indent_level + STANDARD_INDENT_STEP
+	var block_end = _find_block_end(block_start, expected_block_indent)
+
+	# Evaluate the condition for this elif
 	var condition_result = _eval_condition(cond_str)
-	
-	# Apply negation if needed
-	if negate_result:
-		condition_result = not condition_result
-	
+	if not is_running: return "STOPPED"
+
 	if condition_result:
 		# Execute the elif block
 		push_scope()
 		current_line = block_start
-		await _run_interpreter(indent_level + 1)
+		# FIX: Use calculated expected_block_indent
+		await _run_interpreter(expected_block_indent)
+		# Check if stopped during execution
+		if not is_running:
+			pop_scope()
+			return "STOPPED"
 		pop_scope()
-		
-		# After executing the elif block, skip all remaining elif/else blocks
-		while current_line < code_lines.size():
-			var next_line = code_lines[current_line].strip_edges()
-			if next_line.begins_with("elif ") or next_line == "else:":
-				current_line = _find_block_end(current_line + 1, indent_level + 1)
-			else:
-				break
+
+		# If we executed the 'elif' block, skip past any remaining elif/else blocks
+		current_line = _find_end_of_if_elif_else_chain(block_end, indent_level)
 	else:
-		# Skip to the end of the block
+		# Condition was false, skip the elif block's code
 		current_line = block_end
-		
-		# Let the next elif/else be processed by the interpreter
-	
+		# Let the main loop proceed to check the next line (could be another elif or else)
+
 	return "NONE"
 
-# New function to handle else statements
+
 func _handle_else_statement(line: String, indent_level: int) -> String:
+	# This function should only be entered if all preceding if/elif conditions were false.
 	var block_start = current_line
-	var block_end = _find_block_end(block_start, indent_level + 1)
-	
-	# Execute the else block
+	# Calculate expected indent for the block content
+	var expected_block_indent = indent_level + STANDARD_INDENT_STEP
+	var block_end = _find_block_end(block_start, expected_block_indent)
+
+	# Execute the else block unconditionally (since we got here)
 	push_scope()
 	current_line = block_start
-	await _run_interpreter(indent_level + 1)
+	# FIX: Use calculated expected_block_indent
+	await _run_interpreter(expected_block_indent)
+	# Check if stopped during execution
+	if not is_running:
+		pop_scope()
+		return "STOPPED"
 	pop_scope()
-	
-	# After executing, set position to the end of the block
+
+	# After executing the else block, the if/elif/else structure is finished.
+	# Set current_line to the line immediately after the else block.
 	current_line = block_end
-	
+
 	return "NONE"
+
 
 # New function to handle the check functions
 func _interpret_check_function(line: String, func_name: String) -> Variant:
@@ -534,31 +602,55 @@ func _interpret_check_function(line: String, func_name: String) -> Variant:
 		return null
 
 func _handle_while_loop(line: String, indent_level: int) -> String:
-	# e.g., "while x > 0:"
-	# Process the block in a new scope while the condition is true, up to an iteration limit
-
 	var stripped = line.strip_edges()
-	var after_while = stripped.substr(6, stripped.length() - 7).strip_edges()  # remove "while " and ":"
+	var after_while = stripped.substr(6, stripped.length() - 7).strip_edges() # remove "while " and ":"
 	var cond_str = after_while
 
-	var block_start = current_line
-	var block_end = _find_block_end(block_start, indent_level + 1)
+	var block_start = current_line # Line number AFTER the 'while:' line itself
+	# Calculate expected indent for the block content
+	var expected_block_indent = indent_level + STANDARD_INDENT_STEP
+	var block_end = _find_block_end(block_start, expected_block_indent)
 
-	var iteration_limit = 100
+
+	var iteration_limit = 1000 # Keep the safety limit (adjust if needed)
 	var iteration_count = 0
 
-	while iteration_count < iteration_limit and _eval_condition(cond_str):
+	# Evaluate condition *before* the first iteration
+	while is_running and iteration_count < iteration_limit and _eval_condition(cond_str):
+		# Execute the block
 		push_scope()
+
+		# Reset current_line to the start of the block for EACH iteration
 		current_line = block_start
-		await _run_interpreter(indent_level + 1)
+
+		# FIX: Use calculated expected_block_indent
+		await _run_interpreter(expected_block_indent) # Execute block contents
+
+		# Check if execution was stopped during the awaited block
+		if not is_running:
+			pop_scope() # Clean up scope
+			return "STOPPED" # Indicate interruption
+
 		pop_scope()
 		iteration_count += 1
+		# The loop automatically re-evaluates _eval_condition(cond_str) next
 
-	if iteration_count >= iteration_limit:
-		push_warning("While loop iteration limit reached.")
-	current_line = block_end
-	return "NONE"
+	# --- Handle loop termination ---
+	if is_running and iteration_count >= iteration_limit:
+		push_warning("While loop iteration limit (%d) reached: %s" % [iteration_limit, line])
+		push_error("While loop terminated due to iteration limit.")
+		# Make sure is_running is false if we hit the limit and treat as error
+		is_running = false
+		return "ERROR" # Return ERROR if limit is hit
 
+	# If the loop finished normally (condition became false or stopped externally)
+	# set current_line to the end of the block so execution continues after it.
+	if is_running: # Only set if not stopped externally
+		current_line = block_end
+	# else: current_line remains where it was when is_running became false
+
+	return "NONE" # Indicate normal loop completion or handled interruption/error
+	
 func _interpret_pickup_statement(line: String) -> bool:
 	# pickup() takes no parameters
 	var inside = _extract_between(line, "pickup(", ")")
@@ -609,300 +701,415 @@ func _interpret_assignment(line: String) -> bool:
 
 func _interpret_gas_statement(line: String) -> bool:
 	# gas() takes no parameters
-	var inside = _extract_between(line, "gas(", ")")
-	inside = inside.strip_edges()
-	
-	# Verify no arguments were passed
+	var inside = _extract_between(line, "gas(", ")").strip_edges()
 	if inside.length() > 0:
-		push_error("gas() doesn't take any parameters.")
+		push_error("gas() doesn't take any parameters. Got: '%s'" % inside)
 		return false
-		
+
 	if player:
-		player.gas()
-		# wait until the car reports it has crossed exactly one tile
-		await player.tile_reached
-		return true
+		print("INTERPRETER: Executing gas()")
+		player.gas() # Call the player function
+		await player.tile_reached # Wait for the signal
+		# Check if interpreter was stopped while waiting
+		if not is_running:
+			
+			push_warning("Interpreter stopped during gas() await.")
+			return false # Indicate execution should stop propagating
+		print("INTERPRETER: Finished gas() await")
+		return true # Success
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
-	return true
 
 func _interpret_turnleft_statement(line: String) -> bool:
 	# turnleft() takes no parameters
-	var inside = _extract_between(line, "turnleft(", ")")
-	inside = inside.strip_edges()
-	
-	# Verify no arguments were passed
+	var inside = _extract_between(line, "turnleft(", ")").strip_edges()
 	if inside.length() > 0:
-		push_error("turnleft() doesn't take any parameters.")
+		push_error("turnleft() doesn't take any parameters. Got: '%s'" % inside)
 		return false
-		
-	if player:
-		player.turnleft()
-		await player.turn_finished
 
+	if player:
+		player.turnleft() # Call the player function (which starts the turn but doesn't await)
+		await player.turn_finished # Wait for the signal indicating the turn is complete
+		# Check if interpreter was stopped while waiting
+		if not is_running:
+			push_warning("Interpreter stopped during turnleft() await.")
+			return false # Indicate execution should stop propagating
+		return true # Success
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
-	return true
+
 
 func _interpret_turnright_statement(line: String) -> bool:
 	# turnright() takes no parameters
-	var inside = _extract_between(line, "turnright(", ")")
-	inside = inside.strip_edges()
-	
-	# Verify no arguments were passed
+	var inside = _extract_between(line, "turnright(", ")").strip_edges()
 	if inside.length() > 0:
-		push_error("turnright() doesn't take any parameters.")
+		push_error("turnright() doesn't take any parameters. Got: '%s'" % inside)
 		return false
-		
-	if player:
-		player.turnright()
-		await player.turn_finished
 
+	if player:
+		player.turnright() # Call the player function (starts turn, doesn't await)
+		await player.turn_finished # Wait for the signal indicating the turn is complete
+		# Check if interpreter was stopped while waiting
+		if not is_running:
+			push_warning("Interpreter stopped during turnright() await.")
+			return false # Indicate execution should stop propagating
+		return true # Success
 	else:
 		push_error("No player assigned to interpreter.")
 		return false
-	return true
+
 
 func _interpret_function_call(line: String) -> bool:
 	# e.g., "my_function(arg1, arg2)"
 	var func_name_end = line.find("(")
 	if func_name_end <= 0:
-		push_error("Invalid function call syntax: %s" % line)
+		push_error("Invalid function call syntax (cannot find '('): %s" % line)
 		return false
-		
+
 	var func_name = line.substr(0, func_name_end).strip_edges()
-	var args_str = _extract_between(line, "(", ")")
-	
+	if not func_name.is_valid_identifier():
+		push_error("Invalid function name: '%s' in line: %s" % [func_name, line])
+		return false
+
+	var args_str = _extract_between(line, "(", ")") # Assumes simple params
+
 	if not functions.has(func_name):
+		# Could potentially add checks for built-in functions here if needed
 		push_error("Function not found: %s" % func_name)
 		return false
-		
+
 	var func_info = functions[func_name]
 	var param_names = func_info.params
 	var arg_values = []
-	
+
 	# Parse arguments
 	if args_str.strip_edges().length() > 0:
+		# Basic comma split - might fail with commas inside strings or nested calls
 		var arg_strs = args_str.split(",")
 		for arg in arg_strs:
-			arg_values.append(_parse_value(arg.strip_edges()))
-	
+			var parsed_arg = _parse_value(arg.strip_edges())
+			if parsed_arg == null and arg.strip_edges() != "": # Check if parsing failed
+				push_error("Could not parse argument '%s' for function %s" % [arg.strip_edges(), func_name])
+				return false
+			arg_values.append(parsed_arg)
+
 	if arg_values.size() != param_names.size():
 		push_error("Wrong number of arguments for function %s: expected %d, got %d" % [func_name, param_names.size(), arg_values.size()])
 		return false
-	
+
 	# Save current execution position
 	var saved_line = current_line
-	
+
 	# Set up function scope with parameters
 	push_scope()
 	for i in range(param_names.size()):
-		set_var(param_names[i], arg_values[i])
-	
-	# Execute function body
-	current_line = func_info.start_line
-	await _run_interpreter(_count_indent(code_lines[func_info.start_line - 1]) + 1)
-	
-	# Clean up and return to caller
-	pop_scope()
-	current_line = saved_line
-	
-	return true
+		if i < arg_values.size(): # Safety check
+			set_var(param_names[i], arg_values[i])
+		else: # Should not happen if previous size check passed
+			push_error("Internal Error: Argument/Parameter mismatch for %s" % func_name)
+			pop_scope()
+			return false
 
+	# Calculate expected indent level for the function body
+	var func_def_line_idx = func_info.start_line - 1
+	var func_def_indent = 0
+	if func_def_line_idx >= 0 and func_def_line_idx < code_lines.size():
+		# Get indent of the 'func ...:' line itself
+		func_def_indent = _count_indent(code_lines[func_def_line_idx])
+	else:
+		push_warning("Could not determine function definition indent for %s" % func_name)
+		# Fallback assumption: function defined at base indent 0
+		func_def_indent = 0
+
+	current_line = func_info.start_line
+	# FIX: Use calculated function definition indent + STANDARD_INDENT_STEP
+	var expected_body_indent = func_def_indent + STANDARD_INDENT_STEP
+	var result_status = await _run_interpreter(expected_body_indent) # Execute function body
+
+	# Check if stopped during function execution
+	var stopped_or_error = false
+	if not is_running or result_status == "STOPPED" or result_status == "ERROR":
+		stopped_or_error = true
+
+	# Pop scope regardless of stop/error/return to maintain balance
+	pop_scope()
+	# Restore caller line number only if execution wasn't stopped prematurely
+	if not stopped_or_error:
+		current_line = saved_line
+
+	# Return false if stopped or error occurred, true otherwise (even if func returned)
+	return not stopped_or_error
 # ----------------------------------------------------------------------
 # EXPRESSION / CONDITION PARSING
 # ----------------------------------------------------------------------
-func _eval_condition(cond_str: String) -> bool:
-	
-	if " and " in cond_str:
-		var parts = cond_str.split(" and ")
-		for part in parts:
-			if not _eval_condition(part.strip_edges()):
-				return false
-		return true
-	
-	# Handle logical OR
-	if " or " in cond_str:
-		var parts = cond_str.split(" or ")
-		for part in parts:
-			if _eval_condition(part.strip_edges()):
-				return true
-		return false
-	# First check if this is a function call
-	if "(" in cond_str and ")" in cond_str and not (" == " in cond_str or " != " in cond_str or " > " in cond_str or " < " in cond_str or " >= " in cond_str or " <= " in cond_str):
-		# This is a function call like checkleft(EDGE)
-		var func_name_end = cond_str.find("(")
-		if func_name_end <= 0:
-			push_error("Invalid function call syntax: %s" % cond_str)
-			return false
-			
-		var func_name = cond_str.substr(0, func_name_end).strip_edges()
-		var param_str = _extract_between(cond_str, "(", ")")
-		
-		# Handle check functions directly
-		if func_name in ["checkleft", "checkright", "checkfront"]:
-			if not player:
-				push_error("No player assigned to interpreter for check function")
-				return false
-				
-			# Get the parameter value - should be a constant like PASSENGER or EDGE
-			var param_value = param_str.strip_edges()
-			
-			# Execute the appropriate check function on the player
-			match func_name:
-				"checkleft":
-					return player.checkleft(param_value)
-				"checkright":
-					return player.checkright(param_value)
-				"checkfront":
-					return player.checkfront(param_value)
-				_:
-					push_error("Unknown check function: " + func_name)
+func _eval_condition(cond_str_raw: String) -> bool:
+	var cond_str = cond_str_raw.strip_edges()
+
+	# Handle logical OR first (lower precedence)
+	var or_parts = _split_logical(cond_str, " or ")
+	if or_parts.size() > 1:
+		for part in or_parts:
+			if _eval_condition(part): # Recursive call for each part
+				return true # If any part is true, the OR is true
+		return false # If no part was true, the OR is false
+	# If split resulted in only one part (or no " or "), fall through to AND/basic evaluation
+
+	# Handle logical AND next (higher precedence relative to OR)
+	var and_parts = _split_logical(cond_str, " and ")
+	if and_parts.size() > 1:
+		for part in and_parts:
+			if not _eval_condition(part): # Recursive call for each part
+				return false # If any part is false, the AND is false
+		return true # If no part was false, the AND is true
+	# If split resulted in only one part (or no " and "), fall through to basic evaluation
+
+	# --- If no 'or' or 'and' split occurred, evaluate the simple condition ---
+
+	# Handle negation ("not ...") at the simple condition level
+	var negate = false
+	var effective_cond_str = cond_str # Already stripped
+	if effective_cond_str.begins_with("not "):
+		# Make sure it's "not " and not part of a variable name like "notify"
+		if effective_cond_str.length() > 4 and effective_cond_str[3] == ' ':
+			negate = true
+			effective_cond_str = effective_cond_str.substr(4).strip_edges()
+
+	var result = _evaluate_simple_condition(effective_cond_str)
+
+	return not result if negate else result
+
+
+
+func _split_logical(text: String, separator: String) -> Array[String]:
+	var parts: Array[String] = []
+	var current_part = ""
+	var paren_level = 0
+	var in_string = false
+	var string_char = ""
+	var i = 0
+	while i < text.length():
+		var char = text[i]
+		var remaining_text = text.substr(i)
+
+		if in_string:
+			current_part += char
+			if char == string_char:
+				in_string = false
+		elif char == '"' or char == "'":
+			in_string = true
+			string_char = char
+			current_part += char
+		elif char == '(':
+			paren_level += 1
+			current_part += char
+		elif char == ')':
+			paren_level -= 1
+			current_part += char
+		elif paren_level == 0 and not in_string and remaining_text.begins_with(separator):
+			# Found separator outside parentheses and strings
+			parts.append(current_part.strip_edges()) # Trim edges of the part found
+			current_part = ""
+			i += separator.length() - 1 # Skip the separator length
+		else:
+			current_part += char
+		i += 1
+
+	parts.append(current_part.strip_edges()) # Add and trim the last part
+	# Filter out empty strings that might result from splitting
+	return parts.filter(func(part): return part != "")
+
+
+func _evaluate_simple_condition(cond_str: String) -> bool:
+	# First check if this is a function call like checkleft(EDGE)
+	# Make sure it's *just* a function call, not part of a comparison
+	if cond_str.ends_with(")") and "(" in cond_str and \
+	   not (" == " in cond_str or " != " in cond_str or " > " in cond_str or " < " in cond_str or " >= " in cond_str or " <= " in cond_str):
+		var evaluated_value = _evaluate_expression(cond_str) # Use the existing expression evaluator
+		if evaluated_value is bool:
+			return evaluated_value
+		else:
+			# Allow non-bool return values from check functions to be treated as truthy/falsy
+			# Example: if checkleft(PASSENGER): -> true if passenger found, false otherwise
+			# Based on the _evaluate_expression logic, check functions already return bools.
+			# If they returned something else, this check would need adjustment.
+			push_warning("Condition function '%s' did not return a boolean, evaluating truthiness." % cond_str)
+			return bool(evaluated_value) # Basic truthiness check
+
+	# Handle standard comparison operators
+	var op = ""
+	# Order matters: Check >=, <= before >, < to avoid partial matches
+	var op_list = [" == ", " != ", " >= ", " <= ", " > ", " < "]
+	for potential_op in op_list:
+		if potential_op in cond_str:
+			# Basic check to avoid matching inside strings (not perfect)
+			var op_index = cond_str.find(potential_op)
+			var quote_count_before = cond_str.substr(0, op_index).count("\"") + cond_str.substr(0, op_index).count("'")
+			if quote_count_before % 2 == 0: # If not inside a string literal
+				op = potential_op
+				break
+
+	if op != "":
+		var parts = cond_str.split(op, true, 1) # Split only on the first occurrence
+		if parts.size() == 2:
+			var left = _evaluate_expression(parts[0].strip_edges())
+			var right = _evaluate_expression(parts[1].strip_edges())
+			# Perform comparison safely, checking types for >,<,>=,<=
+			match op:
+				" == ": return left == right
+				" != ": return left != right
+				" > ":
+					if typeof(left) == typeof(right) and (left is int or left is float): return left > right
+					push_warning("Cannot compare '>' on types %s and %s" % [typeof(left), typeof(right)])
+					return false
+				" < ":
+					if typeof(left) == typeof(right) and (left is int or left is float): return left < right
+					push_warning("Cannot compare '<' on types %s and %s" % [typeof(left), typeof(right)])
+					return false
+				" >= ":
+					if typeof(left) == typeof(right) and (left is int or left is float): return left >= right
+					push_warning("Cannot compare '>=' on types %s and %s" % [typeof(left), typeof(right)])
+					return false
+				" <= ":
+					if typeof(left) == typeof(right) and (left is int or left is float): return left <= right
+					push_warning("Cannot compare '<=' on types %s and %s" % [typeof(left), typeof(right)])
 					return false
 		else:
-			# For other function calls, try to execute them normally
-			# (This would need more implementation if you have other functions to call)
-			push_error("Unsupported function in condition: %s" % func_name)
+			push_error("Invalid comparison format: %s" % cond_str)
 			return false
-	
-	# Handle standard comparison operators
-	if " == " in cond_str:
-		var parts = cond_str.split(" == ")
-		if parts.size() == 2:
-			var left = _evaluate_expression(parts[0].strip_edges())
-			var right = _evaluate_expression(parts[1].strip_edges())
-			return left == right
-	elif " != " in cond_str:
-		var parts = cond_str.split(" != ")
-		if parts.size() == 2:
-			var left = _evaluate_expression(parts[0].strip_edges()) 
-			var right = _evaluate_expression(parts[1].strip_edges())
-			return left != right
-	elif " > " in cond_str:
-		var parts = cond_str.split(" > ")
-		if parts.size() == 2:
-			var left = _evaluate_expression(parts[0].strip_edges())
-			var right = _evaluate_expression(parts[1].strip_edges())
-			return left > right
-	elif " < " in cond_str:
-		var parts = cond_str.split(" < ")
-		if parts.size() == 2:
-			var left = _evaluate_expression(parts[0].strip_edges())
-			var right = _evaluate_expression(parts[1].strip_edges())
-			return left < right
-	elif " >= " in cond_str:
-		var parts = cond_str.split(" >= ")
-		if parts.size() == 2:
-			var left = _evaluate_expression(parts[0].strip_edges())
-			var right = _evaluate_expression(parts[1].strip_edges())
-			return left >= right
-	elif " <= " in cond_str:
-		var parts = cond_str.split(" <= ")
-		if parts.size() == 2:
-			var left = _evaluate_expression(parts[0].strip_edges())
-			var right = _evaluate_expression(parts[1].strip_edges())
-			return left <= right
-	
-	# If no operators found, check if the value itself is truthy
+
+	# If no operators found, evaluate the expression and check its truthiness
 	var val = _evaluate_expression(cond_str)
-	if val == null:
-		return false
-	if val is int and val == 0:
-		return false
-	if val is float and abs(val) < 0.000001:
-		return false
-	if val is String and val == "":
-		return false
-	return true
+	# Standard GDScript truthiness:
+	return bool(val)
+
+
 
 # Add a new function to evaluate expressions including function calls
-func _evaluate_expression(expr: String) -> Variant:
+func _evaluate_expression(expr_raw: String) -> Variant:
+	var expr = expr_raw.strip_edges()
 	# Check if this is a function call
-	if "(" in expr and ")" in expr:
+	# Improved check to avoid misinterpreting (a+b) or simple values
+	if expr.ends_with(")") and expr.contains("("):
 		var func_name_end = expr.find("(")
-		if func_name_end <= 0:
-			push_error("Invalid function call syntax: %s" % expr)
-			return null
-			
-		var func_name = expr.substr(0, func_name_end).strip_edges()
-		var param_str = _extract_between(expr, "(", ")")
-		
-		# Handle check functions directly
-		if func_name in ["checkleft", "checkright", "checkfront"]:
-			if not player:
-				push_error("No player assigned to interpreter for check function")
-				return null
-				
-			# Get the parameter value - should be a constant like PASSENGER or EDGE
-			var param_value = param_str.strip_edges()
-			
-			# Execute the appropriate check function on the player
-			match func_name:
-				"checkleft":
-					return player.checkleft(param_value)
-				"checkright":
-					return player.checkright(param_value)
-				"checkfront":
-					return player.checkfront(param_value)
-				_:
-					push_error("Unknown check function: " + func_name)
+		# Ensure the part before '(' is a valid identifier (function name)
+		# and not something else like an operator or another parenthesis
+		if func_name_end > 0:
+			var potential_func_name = expr.substr(0, func_name_end).strip_edges()
+			if potential_func_name.is_valid_identifier() and not "(" in potential_func_name and not potential_func_name.ends_with(" "):
+
+				var func_name = potential_func_name
+				# Extract parameters carefully, respecting potential nested calls or commas in strings
+				# For simplicity, using _extract_between, which might fail on complex nesting.
+				var param_str = _extract_between(expr, "(", ")") # Assuming simple, non-nested params
+
+				# Handle check functions directly (as they return values used in conditions)
+				if func_name in ["checkleft", "checkright", "checkfront"]:
+					if not player:
+						push_error("No player assigned to interpreter for check function '%s'" % func_name)
+						return null
+
+					# Evaluate the parameter string - it could be a variable OR a keyword like EDGE
+					var param_value = _parse_value(param_str.strip_edges()) # Use parse_value to resolve variables/keywords
+
+					# ---> Check if _parse_value failed (returned null) <---
+					if param_value == null:
+						push_error("Parameter '%s' for function '%s' evaluated to null. Is it a defined variable or a valid keyword (EDGE, PASSENGER, WALL, DESTINATION)?" % [param_str.strip_edges(), func_name])
+						return null # Return null to indicate error evaluating expression
+
+					# ---> Ensure the evaluated type is string before calling player func <---
+					if not param_value is String:
+						push_error("Parameter '%s' for function '%s' must evaluate to a String (like 'edge', 'passenger'), but got type %s." % [param_str.strip_edges(), func_name, typeof(param_value)])
+						return null # Return null to indicate error
+
+					# Call the actual player function with the validated String parameter
+					match func_name:
+						"checkleft": return player.checkleft(param_value)
+						"checkright": return player.checkright(param_value)
+						"checkfront": return player.checkfront(param_value)
+					# The match _ should not be reachable due to the 'in' check above
+				else:
+					# Handle other potential future functions that return values
+					push_error("Unsupported function returning value in expression: %s" % func_name)
 					return null
-		else:
-			# For other function calls (would need more implementation)
-			push_error("Unsupported function in expression: %s" % func_name)
-			return null
-	
-	# If not a function call, use the normal parse value
+			# Fall through if the text before '(' wasn't a valid identifier
+		# Fall through if not identified as a known function call returning a value
+
+	# If not a recognized function call returning a value, use the normal parse value logic
 	return _parse_value(expr)
+
 
 func _parse_value(value_raw: String) -> Variant:
 	var trimmed = value_raw.strip_edges()
+	if trimmed.is_empty():
+		return null # Avoid processing empty strings
+
 	# String literals
-	if ((trimmed.begins_with("\"") and trimmed.ends_with("\"")) or 
-		(trimmed.begins_with("'") and trimmed.ends_with("'"))):
+	if trimmed.begins_with("\"") and trimmed.ends_with("\""):
 		return trimmed.substr(1, trimmed.length() - 2)
-	# Numeric literals
-	if trimmed.is_valid_int():
-		return int(trimmed)
-	if trimmed.is_valid_float():
-		return float(trimmed)
+	if trimmed.begins_with("'") and trimmed.ends_with("'"):
+		return trimmed.substr(1, trimmed.length() - 2)
 	# Boolean literals
-	if trimmed == "true":
-		return true
-	if trimmed == "false":
-		return false
-	# Basic math operations
+	if trimmed == "true": return true
+	if trimmed == "false": return false
+	# Numeric literals
+	if trimmed.is_valid_int(): return int(trimmed)
+	if trimmed.is_valid_float(): return float(trimmed)
+
+	# ---> ** ADDED: Check for known keywords BEFORE variable lookup ** <---
+	match trimmed.to_upper(): # Check case-insensitively
+		"PASSENGER": return "passenger" # Return the lowercase string expected by player
+		"DESTINATION": return "destination"
+		"EDGE": return "edge"
+		"WALL": return "wall"
+		# Add any other keywords you might need here
+
+	# Handle simple arithmetic (NO parentheses support, basic left-to-right for +,- and *,/)
+	# (Existing basic arithmetic logic here - keep as is or improve if needed)
 	if " + " in trimmed:
-		var parts = trimmed.split(" + ")
+		var parts = trimmed.split(" + ", true, 1)
 		if parts.size() == 2:
-			var left = _parse_value(parts[0])
-			var right = _parse_value(parts[1])
-			return left + right
+			var left = _parse_value(parts[0]) # Recursive call
+			var right = _parse_value(parts[1]) # Recursive call
+			if left != null and right != null:
+				# Try basic variant addition, handle potential errors if types mismatch severely
+				var result = left + right
+				return result
 	if " - " in trimmed:
-		var parts = trimmed.split(" - ")
+		var parts = trimmed.split(" - ", true, 1)
 		if parts.size() == 2:
 			var left = _parse_value(parts[0])
 			var right = _parse_value(parts[1])
-			return left - right
+			if left != null and right != null and (left is int or left is float) and (right is int or right is float): return left - right
 	if " * " in trimmed:
-		var parts = trimmed.split(" * ")
+		var parts = trimmed.split(" * ", true, 1)
 		if parts.size() == 2:
 			var left = _parse_value(parts[0])
 			var right = _parse_value(parts[1])
-			return left * right
+			if left != null and right != null and (left is int or left is float) and (right is int or right is float): return left * right
 	if " / " in trimmed:
-		var parts = trimmed.split(" / ")
+		var parts = trimmed.split(" / ", true, 1)
 		if parts.size() == 2:
 			var left = _parse_value(parts[0])
 			var right = _parse_value(parts[1])
-			if right == 0:
-				push_error("Division by zero")
-				return 0
-			return left / right
-	# Variables
-	return get_var(trimmed)
+			if left != null and right != null and (left is int or left is float) and (right is int or right is float):
+				if right == 0.0 or right == 0:
+					push_error("Division by zero: %s" % value_raw)
+					return null # Indicate error
+				# Ensure float division if either operand is float
+				return float(left) / float(right)
+
+	# If none of the above, NOW assume it's a variable name
+	var var_value = get_var(trimmed)
+	if var_value == null:
+		# Variable not found and it wasn't a literal or keyword
+		push_warning("Identifier '%s' not found as variable, literal, or keyword." % trimmed)
+		# Return null explicitly to signify it couldn't be parsed/found
+		return null
+
+	return var_value
+
 
 # ----------------------------------------------------------------------
 # UTILITY FUNCTIONS

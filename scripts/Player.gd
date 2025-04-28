@@ -338,45 +338,46 @@ func _perform_turn() -> void:
 	var velocity_magnitude = linear_velocity.length()
 
 	# --- Rotation using Angular Velocity ---
-	var turn_duration = 0.02 # Desired duration of the 90-degree turn
+	var turn_duration = 0.02 # Desired duration of the 90-degree turn (Adjust as needed)
 	var start_rotation_y = rotation.y
 
 	# Calculate target angle change (90 degrees = PI/2 radians)
 	var delta_angle = PI/2.0 * float(turn_direction)
 
-	# Calculate the required angular velocity to make the turn in the desired time
+	# Calculate the required angular velocity
 	var required_angular_velocity_y = delta_angle / turn_duration
 
 	# Apply the angular velocity
 	angular_velocity = Vector3(0, required_angular_velocity_y, 0)
 
 	# Wait for the turn duration using a timer
+	# Use await directly here as this is player logic internal to the turn
 	await get_tree().create_timer(turn_duration).timeout
 
 	# Stop the rotation precisely
 	angular_velocity = Vector3.ZERO
 
-	# Clamp the rotation to the exact target angle to avoid drift from physics
+	# Clamp the rotation to the exact target angle to avoid drift
 	var target_rotation_y = start_rotation_y + delta_angle
-	# Normalize the angle to prevent it growing indefinitely
+	# Normalize the angle
 	target_rotation_y = wrapf(target_rotation_y, -PI, PI)
 	rotation.y = target_rotation_y
 
-	# Update the internal direction vector
-	var previous_direction = current_direction
+	# Update the internal direction vector AFTER rotation is complete
 	update_direction_from_rotation()
 
 	# --- Apply velocity in the new direction ---
-	# Set the car to move in the new forward direction while maintaining speed
+	# Maintain speed in the new direction
 	linear_velocity = current_direction * velocity_magnitude
-	
+
 	# --- Reset flag and emit signal ---
 	turn_in_progress = false
-	emit_signal("turn_finished")
+	emit_signal("turn_finished") # Signal that the interpreter is waiting for
 
 # COMMAND FUNCTIONS
 
 func gas() -> void:
+	print("PLAYER: gas() function called.")
 	# queue another 1-unit step
 	step_queue += 1
 	
@@ -407,45 +408,38 @@ func brake() -> void:
 	# Clear the step queue and driving flag
 	step_queue = 0
 	is_driving = false
-	
-	# Store current velocity for braking calculation
-	var current_vel = linear_velocity
-	
-	# Zero out velocity
+
+	# Stop movement immediately for simplicity in interpreted code
+	# More realistic braking could apply forces over time.
 	linear_velocity = Vector3.ZERO
-	
-	# Set a temporary higher friction coefficient
-	var temp_material = PhysicsMaterial.new()
-	temp_material.friction = 2.0  # Temporarily high friction
-	temp_material.bounce = 0.0    # No bounce
-	physics_material_override = temp_material
-	
-	# Reset physics material after short delay
-	get_tree().create_timer(0.3).timeout.connect(func():
-		var normal_material = PhysicsMaterial.new()
-		normal_material.friction = 0
-		normal_material.bounce = 0.1
-		physics_material_override = normal_material
-		emit_signal("tile_reached")
-	)
-	
+	angular_velocity = Vector3.ZERO # Stop any rotation too
+
+	# No need for temporary physics material if we just zero velocity.
+	# Emit the signal almost immediately after stopping.
+	# Use call_deferred to ensure physics state settles before signal.
+	call_deferred("emit_signal", "tile_reached")
+
+	# Alternative: Use a very short timer if deferred isn't enough
+	#await get_tree().create_timer(0.05).timeout
+	#emit_signal("tile_reached")
 
 
 func turnleft() -> void:
 	turn_direction = 1
 	if not turn_in_progress:
-		# REMOVE await here. Just start the turn. The interpreter will wait for the signal.
+		# REMOVED await here. Just start the turn.
+		# The interpreter will wait for the turn_finished signal.
 		_perform_turn()
 	else:
-		# This case shouldn't happen often if the interpreter awaits correctly,
-		# but good to have a log just in case.
+		# Log if turn is already happening, maybe queue it? For now, just log.
 		print("Turn Left command ignored: Turn already in progress.")
 
 
 func turnright() -> void:
 	turn_direction = -1
 	if not turn_in_progress:
-		# REMOVE await here. Just start the turn. The interpreter will wait for the signal.
+		# REMOVED await here. Just start the turn.
+		# The interpreter will wait for the turn_finished signal.
 		_perform_turn()
 	else:
 		print("Turn Right command ignored: Turn already in progress.")
@@ -453,45 +447,35 @@ func turnright() -> void:
 
 
 func checkleft(check_type: String) -> bool:
-	print("DEBUG: checkleft called with type: ", check_type)
-	
-	# Create a position to the left of the car
+	# print("DEBUG: checkleft called with type: ", check_type) # Optional: Keep if needed but less frequent
+
 	var check_center = global_position - current_direction.cross(Vector3.UP).normalized() * CHECK_DISTANCE
-	
-	# Use direct space state query
 	var space_state = get_world_3d().direct_space_state
 	var params = PhysicsShapeQueryParameters3D.new()
-	
-	# Create a box shape
 	var shape = BoxShape3D.new()
 	shape.size = CHECK_SHAPE_SIZE
 	params.set_shape(shape)
 	params.transform = Transform3D(Basis(), check_center)
-	
-	# Set collision mask to detect everything of interest
-	params.collision_mask = 31  # Layers 1-5
-	
-	# Execute the query
+	params.collision_mask = 31
 	var result = space_state.intersect_shape(params)
-	print("DEBUG: Direct check left found ", result.size(), " objects")
-	
-	# For debugging, print what was found
-	for hit in result:
-		var obj = hit["collider"]
-		print("DEBUG: Left check found: ", obj.name, " of type: ", obj.get_class())
-	
-	# Process these results
+
+	# print("DEBUG: Direct check left found ", result.size(), " objects") # Reduce noise
+
 	var direct_bodies = []
 	var direct_areas = []
-	
 	for hit in result:
-		var obj = hit["collider"]
-		if obj is Area3D:
-			direct_areas.append(obj)
-		else:
-			direct_bodies.append(obj)
-			
-	return _process_check_result(check_type, direct_bodies, direct_areas)
+		var obj = hit.get("collider") # Use get() for safety
+		if obj: # Check if collider exists
+			 # Optional: Print only if it's NOT the floor
+			 # if not "Floor" in obj.name:
+			 #    print("DEBUG: Left check found: ", obj.name, " of type: ", obj.get_class())
+			if obj is Area3D:
+				direct_areas.append(obj)
+			elif obj is CollisionObject3D: # Check type more broadly
+				direct_bodies.append(obj)
+
+	return _process_check_result(check_type, direct_bodies, direct_areas) # Pass direction for logging
+
 
 func checkright(check_type: String) -> bool:
 	print("DEBUG: checkright called with type: ", check_type)
@@ -577,20 +561,18 @@ func checkfront(check_type: String) -> bool:
 	return _process_check_result(check_type, direct_bodies, direct_areas)
 # Helper function to process check results with debugging
 func _process_check_result(check_type: String, bodies: Array, areas: Array) -> bool:
-	print("DEBUG: Processing check result for type: ", check_type)
+	
 	
 	# Convert the check_type to string if it's not already
 	var check_type_str = String(check_type)
 	var check_type_lower = check_type_str.to_lower()
 	
-	print("DEBUG: Converted check type: ", check_type_str, " (lower: ", check_type_lower, ")")
+	
 	
 	# Handle both variable references and string constants
 	if check_type_str == "PASSENGER" or check_type_lower == "passenger":
-		print("DEBUG: Checking for passenger")
 		# Check for passengers in bodies
 		for body in bodies:
-			print("DEBUG: Examining body: ", body.name)
 			
 			# More thorough passenger detection
 			var is_passenger = false
@@ -616,85 +598,62 @@ func _process_check_result(check_type: String, bodies: Array, areas: Array) -> b
 				is_passenger = true
 				
 			if is_passenger:
-				print("DEBUG: Found passenger: ", body.name)
 				return true
 				
-		print("DEBUG: No passenger found")
 	
 	elif check_type_str == "DESTINATION" or check_type_lower == "destination":
-		print("DEBUG: Checking for destination")
 		# Check for destinations in areas
 		for area in areas:
 			# Direct method check
 			if area.has_method("is_destination"):
-				print("DEBUG: Found destination via method: ", area.name)
 				return true
 			
 			# Name check
 			if "destination" in area.name.to_lower():
-				print("DEBUG: Found destination via name: ", area.name)
 				return true
 				
 			# Group check
 			if area.is_in_group("destinations"):
-				print("DEBUG: Found destination via group: ", area.name)
 				return true
 				
 			# Parent check
 			if area.get_parent() and area.get_parent().has_method("is_destination"):
-				print("DEBUG: Found destination via parent method: ", area.get_parent().name)
 				return true
 			if area.get_parent() and "destination" in area.get_parent().name.to_lower():
-				print("DEBUG: Found destination via parent name: ", area.get_parent().name)
 				return true
 			if area.get_parent() and area.get_parent().is_in_group("destinations"):
-				print("DEBUG: Found destination via parent group: ", area.get_parent().name)
 				return true
 		
 		# Also check bodies for destinations (since some might be CollisionObjects)
 		for body in bodies:
 			# Same checks as for areas
 			if body.has_method("is_destination") or "destination" in body.name.to_lower() or body.is_in_group("destinations"):
-				print("DEBUG: Found destination in body: ", body.name)
 				return true
 				
 			if body.get_parent() and (body.get_parent().has_method("is_destination") or 
 									  "destination" in body.get_parent().name.to_lower() or
 									  body.get_parent().is_in_group("destinations")):
-				print("DEBUG: Found destination via parent body: ", body.get_parent().name)
 				return true
 				
-		print("DEBUG: No destination found")
 	
 	elif check_type_str == "EDGE" or check_type_lower == "edge":
-		print("DEBUG: Checking for edge")
 		# Check if we're at an edge by examining wheel contact
 		var wheel_info = _check_grounded_detailed()
 		var result = wheel_info.wheels_on_ground > 0 and wheel_info.wheels_on_ground < 4
-		print("DEBUG: Edge check result: ", result, " (wheels on ground: ", wheel_info.wheels_on_ground, ")")
 		return result
 	
 	elif check_type_str == "WALL" or check_type_lower == "wall":
-		print("DEBUG: Checking for wall")
 		# Check for walls in bodies
 		for body in bodies:
 			if "wall" in body.name.to_lower() or body.is_in_group("walls"):
-				print("DEBUG: Found wall: ", body.name)
 				return true
 				
 			if body.get_parent() and ("wall" in body.get_parent().name.to_lower() or body.get_parent().is_in_group("walls")):
-				print("DEBUG: Found wall via parent: ", body.get_parent().name)
 				return true
 				
-		print("DEBUG: No wall found")
 	
-	# Default: no match found
-	print("DEBUG: No match found for check type: ", check_type_str)
 	return false
 	
-	# Default: no match found
-	print("DEBUG: No match found for check type: ", check_type_str)
-	return false
 func pickup() -> bool:
 	if current_passengers.size() >= max_passengers:
 		print("Car is full! Cannot pick up more passengers.")
