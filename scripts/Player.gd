@@ -62,12 +62,59 @@ var step_speed      : float = 4.0      # ≈ units / second (tweak to taste)
 
 var old_direction: Vector3 = Vector3.ZERO  # Store previous direction
 
+func _show_check_area(position: Vector3, check_type: String, duration: float = 0.5) -> void:
+	# Create the debug mesh if it doesn't exist
+	if not debug_mesh_instance:
+		debug_mesh_instance = MeshInstance3D.new()
+		add_child(debug_mesh_instance)
+		
+		# Create a box mesh with the check size
+		var mesh = BoxMesh.new()
+		mesh.size = CHECK_SHAPE_SIZE
+		debug_mesh_instance.mesh = mesh
+		
+		# Create material
+		debug_mesh_material = StandardMaterial3D.new()
+		debug_mesh_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		debug_mesh_instance.material_override = debug_mesh_material
+		
+		# Create timer for auto-hiding
+		debug_mesh_timer = Timer.new()
+		add_child(debug_mesh_timer)
+		debug_mesh_timer.one_shot = true
+		debug_mesh_timer.timeout.connect(func(): debug_mesh_instance.visible = false)
+	
+	# Position the debug mesh
+	debug_mesh_instance.global_position = position
+	
+	# Set different colors for different check types
+	match check_type.to_lower():
+		"edge":
+			debug_mesh_material.albedo_color = Color(1, 0, 0, 0.5)  # Red for edge
+		"wall":
+			debug_mesh_material.albedo_color = Color(0, 0, 1, 0.5)  # Blue for wall
+		"passenger":
+			debug_mesh_material.albedo_color = Color(0, 1, 0, 0.5)  # Green for passenger
+		"destination":
+			debug_mesh_material.albedo_color = Color(1, 1, 0, 0.5)  # Yellow for destination
+		_:
+			debug_mesh_material.albedo_color = Color(1, 1, 1, 0.5)  # White default
+	
+	# Make visible and start timer
+	debug_mesh_instance.visible = true
+	debug_mesh_timer.wait_time = duration
+	debug_mesh_timer.start()
+
 const PASSENGER = "passenger"
 const DESTINATION = "destination"
 const EDGE = "edge"
 const WALL = "wall"
 const CHECK_DISTANCE = 1  # How far to check
-const CHECK_SHAPE_SIZE = Vector3(1.2, 0.5, 1.2)
+const CHECK_SHAPE_SIZE = Vector3(.5, 1, .5)
+
+var debug_mesh_instance: MeshInstance3D = null
+var debug_mesh_timer: Timer = null
+var debug_mesh_material: StandardMaterial3D = null
 
 # helper
 func _snap_to_grid(v : Vector3) -> Vector3:
@@ -463,6 +510,7 @@ func checkleft(check_type: String) -> bool:
 	# print("DEBUG: checkleft called with type: ", check_type) # Optional: Keep if needed but less frequent
 
 	var check_center = global_position - current_direction.cross(Vector3.UP).normalized() * CHECK_DISTANCE
+	_show_check_area(check_center, check_type)
 	var space_state = get_world_3d().direct_space_state
 	var params = PhysicsShapeQueryParameters3D.new()
 	var shape = BoxShape3D.new()
@@ -497,6 +545,7 @@ func checkright(check_type: String) -> bool:
 	
 	var check_center = global_position + current_direction.cross(Vector3.UP).normalized() * CHECK_DISTANCE
 	
+	_show_check_area(check_center, check_type)
 	# Use direct space state query
 	var space_state = get_world_3d().direct_space_state
 	var params = PhysicsShapeQueryParameters3D.new()
@@ -538,6 +587,9 @@ func checkfront(check_type: String) -> bool:
 	# Create a position in front of the car
 	var check_center = global_position + current_direction.normalized() * CHECK_DISTANCE
 	
+	# Show visual debug box
+	_show_check_area(check_center, check_type)
+	
 	# Use direct space state query
 	var space_state = get_world_3d().direct_space_state
 	var params = PhysicsShapeQueryParameters3D.new()
@@ -555,10 +607,24 @@ func checkfront(check_type: String) -> bool:
 	var result = space_state.intersect_shape(params)
 	print("DEBUG: Direct check front found ", result.size(), " objects")
 	
-	# For debugging, print what was found
+	# Enhanced debugging - print what was found and their layers
 	for hit in result:
 		var obj = hit["collider"]
-		print("DEBUG: Front check found: ", obj.name, " of type: ", obj.get_class())
+		if obj:
+			var layer_info = "Collision layer: " + str(obj.collision_layer)
+			print("DEBUG: Front check found: ", obj.name, " of type: ", obj.get_class(), " | ", layer_info)
+			
+			# Additional debugging for floor detection
+			if check_type.to_lower() == "edge":
+				var is_floor = (
+					obj.name == "UnifiedFloorCollision" or 
+					"floor" in obj.name.to_lower() or 
+					"ground" in obj.name.to_lower() or 
+					"tile" in obj.name.to_lower() or 
+					obj.is_in_group("floor") or 
+					obj.is_in_group("road")
+				)
+				print("DEBUG: Is this object considered floor? ", is_floor)
 	
 	# Process these results
 	var direct_bodies = []
