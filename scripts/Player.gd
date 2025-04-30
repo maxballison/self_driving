@@ -517,7 +517,9 @@ func checkleft(check_type: String) -> bool:
 	shape.size = CHECK_SHAPE_SIZE
 	params.set_shape(shape)
 	params.transform = Transform3D(Basis(), check_center)
-	params.collision_mask = 31
+	params.collision_mask = 159 # Mask including Layer 8 (Destinations)
+	params.collide_with_areas = true # <--- ENABLE AREA DETECTION
+	params.exclude = [get_rid()] # Exclude the player itself
 	var result = space_state.intersect_shape(params)
 
 	# print("DEBUG: Direct check left found ", result.size(), " objects") # Reduce noise
@@ -557,7 +559,9 @@ func checkright(check_type: String) -> bool:
 	params.transform = Transform3D(Basis(), check_center)
 	
 	# Set collision mask to detect everything of interest
-	params.collision_mask = 31  # Layers 1-5
+	params.collision_mask = 159 # Mask including Layer 8 (Destinations)
+	params.collide_with_areas = true # <--- ENABLE AREA DETECTION
+	params.exclude = [get_rid()] # Exclude the player itself
 	
 	# Execute the query
 	var result = space_state.intersect_shape(params)
@@ -600,8 +604,9 @@ func checkfront(check_type: String) -> bool:
 	params.set_shape(shape)
 	params.transform = Transform3D(Basis(), check_center)
 	
-	# Set collision mask to detect everything of interest
-	params.collision_mask = 31  # Layers 1-5
+	params.collision_mask = 159 # Mask including Layer 8 (Destinations)
+	params.collide_with_areas = true # <--- ENABLE AREA DETECTION
+	params.exclude = [get_rid()] # Exclude the player itself
 	
 	# Execute the query
 	var result = space_state.intersect_shape(params)
