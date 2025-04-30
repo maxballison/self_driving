@@ -37,12 +37,16 @@ fov = 60.0
 script = ExtResource("9_75huk")
 
 [node name="CodeEditorImproved" parent="." instance=ExtResource("6_ndsxb")]
+offset_left = 63.0
+offset_top = 54.0
+offset_right = -2150.0
+offset_bottom = -66.0
 
 [node name="TutorialWindow" parent="." instance=ExtResource("6_vhwd6")]
-offset_left = 1957.0
-offset_top = 48.0
-offset_right = 2505.0
-offset_bottom = 831.0
+offset_left = 1952.0
+offset_top = 94.0
+offset_right = 2939.0
+offset_bottom = 992.0
 
 [node name="MovingBackground" parent="." instance=ExtResource("8_t66kt")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5.81658, 0)

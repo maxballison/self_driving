@@ -18,6 +18,13 @@ var is_running: bool = false
 
 var code_editor = null
 
+signal code_error_detected(line_number: int, error_message: String)
+
+
+var last_error_line: int = -1
+var last_error_message: String = ""
+
+
 const STANDARD_INDENT_STEP = 4
 
 @export var step_delay: float = 0.1 
@@ -27,9 +34,23 @@ func _ready() -> void:
 	code_editor = get_node_or_null("/root/Main/CodeEditorImproved")
 
 # Called by the CodeEditor script to run user code asynchronously
+
+func report_error(line: int, message: String) -> void:
+	last_error_line = line
+	last_error_message = message
+	
+	# Emit a signal instead of calling the editor directly
+	emit_signal("code_error_detected", line, message)
+	
+	# Always log to console too
+	push_error("Error on line %d: %s" % [line, message])
+	
+	# Stop execution
+	is_running = false
+
 func execute_script(script_text: String) -> void:
 	if is_running:
-		push_error("Interpreter is already busy executing code.")
+		report_error(current_line-1,"Interpreter is already busy executing code.")
 		return
 	is_running = true
 
@@ -103,7 +124,7 @@ func _run_interpreter(indent_level: int) -> Variant: # Return value might be use
 		if line_indent < indent_level:
 			return "BLOCK_ENDED"
 		if line_indent > indent_level:
-			push_warning("Skipping line %d due to unexpected indentation level %d (expected %d)." % [current_line, line_indent, indent_level])
+			report_error(current_line-1,"Skipping line %d due to unexpected indentation level %d (expected %d)." % [current_line, line_indent, indent_level])
 			current_line += 1
 			continue
 
@@ -130,7 +151,7 @@ func _run_interpreter(indent_level: int) -> Variant: # Return value might be use
 				is_running = false
 				return "STOPPED"
 			"ERROR":
-				push_error("Error encountered interpreting line %d: %s" % [line_number_to_interpret, line_content_to_interpret])
+				report_error(current_line-1,"Error encountered interpreting line %d: %s" % [line_number_to_interpret, line_content_to_interpret])
 				is_running = false
 				return "ERROR"
 			"RETURN":
@@ -165,11 +186,11 @@ func pop_scope() -> void:
 	if environment_stack.size() > 0:
 		environment_stack.pop_back()
 	else:
-		push_warning("Scope stack is empty; cannot pop.")
+		push_error("Scope stack is empty; cannot pop.")
 
 func set_var(var_name: String, value: Variant) -> void:
 	if environment_stack.size() == 0:
-		push_error("No scope available to store variable '%s'." % var_name)
+		report_error(current_line-1,"No scope available to store variable '%s'." % var_name)
 		return
 	environment_stack[environment_stack.size() - 1][var_name] = value
 
@@ -177,7 +198,7 @@ func get_var(var_name: String) -> Variant:
 	for i in range(environment_stack.size() - 1, -1, -1):
 		if environment_stack[i].has(var_name):
 			return environment_stack[i][var_name]
-	push_warning("Variable '%s' not found in any scope." % var_name)
+	report_error(current_line-1,"Variable '%s' not found in any scope." % var_name)
 	return null
 
 # ----------------------------------------------------------------------
@@ -272,7 +293,7 @@ func _interpret_line(line: String, indent_level: int) -> String:
 
 	# --- Unrecognized Statement ---
 	else:
-		push_warning("Unrecognized statement on line: %s" % line)
+		report_error(current_line-1,"Unrecognized statement on line: %s" % line)
 		# Decide if this should be an error or just skipped
 		return "NONE" # Treat as skippable for now, maybe return "ERROR"?
 
@@ -280,18 +301,18 @@ func _interpret_line(line: String, indent_level: int) -> String:
 func _interpret_brake_statement(line: String) -> bool:
 	var inside = _extract_between(line, "brake(", ")").strip_edges()
 	if inside.length() > 0:
-		push_error("brake() doesn't take any parameters.")
+		report_error(current_line-1,"brake() doesn't take any parameters.")
 		return false
 
 	if player:
 		player.brake() # This now awaits tile_reached internally in the player func
 		await player.tile_reached # Wait for the signal from player.brake()
 		if not is_running:
-			push_warning("Interpreter stopped during brake() await.")
+			push_error("Interpreter stopped during brake() await.")
 			return false
 		return true
 	else:
-		push_error("No player assigned to interpreter.")
+		report_error(current_line-1,"No player assigned to interpreter.")
 		return false
 
 # This helper method for wait() is no longer needed
@@ -307,13 +328,13 @@ func _interpret_dropoff_statement(line: String) -> bool:
 	
 	# Verify no arguments were passed
 	if inside.length() > 0:
-		push_error("dropoff() doesn't take any parameters.")
+		report_error(current_line-1,"dropoff() doesn't take any parameters.")
 		return false
 		
 	if player:
 		return player.dropoff()  # Call the dropoff function
 	else:
-		push_error("No player assigned to interpreter.")
+		report_error(current_line-1,"No player assigned to interpreter.")
 		return false
 
 func _handle_for_loop(line: String, indent_level: int) -> String:
@@ -324,13 +345,13 @@ func _handle_for_loop(line: String, indent_level: int) -> String:
 	if " in range(" in after_for:
 		var pieces = after_for.split(" in range(", true, 1)
 		if pieces.size() != 2:
-			push_error("Invalid for syntax: %s" % line)
+			report_error(current_line-1,"Invalid for syntax: %s" % line)
 			return "ERROR"
 
 		var var_name = pieces[0].strip_edges()
 		var range_str_raw = pieces[1].strip_edges()
 		if not range_str_raw.ends_with(")"):
-			push_error("Invalid range syntax (missing closing parenthesis?): %s" % line)
+			report_error(current_line-1,"Invalid range syntax (missing closing parenthesis?): %s" % line)
 			return "ERROR"
 		var range_str = range_str_raw.substr(0, range_str_raw.length() - 1) # Remove trailing ')'
 
@@ -341,7 +362,7 @@ func _handle_for_loop(line: String, indent_level: int) -> String:
 			if val is int:
 				range_args_int.append(val)
 			else:
-				push_error("Range arguments must evaluate to integers: '%s' in %s" % [arg_str, line])
+				report_error(current_line-1,"Range arguments must evaluate to integers: '%s' in %s" % [arg_str, line])
 				return "ERROR"
 
 		var start = 0
@@ -358,10 +379,10 @@ func _handle_for_loop(line: String, indent_level: int) -> String:
 			end = range_args_int[1]
 			step = range_args_int[2]
 			if step == 0:
-				push_error("Range step cannot be zero: %s" % line)
+				report_error(current_line-1,"Range step cannot be zero: %s" % line)
 				return "ERROR"
 		else:
-			push_error("Invalid number of range arguments: %s" % line)
+			report_error(current_line-1,"Invalid number of range arguments: %s" % line)
 			return "ERROR"
 
 		var block_start = current_line
@@ -388,7 +409,7 @@ func _handle_for_loop(line: String, indent_level: int) -> String:
 			current_line = block_end
 		return "NONE" # Indicate normal loop completion or interruption handled
 	else:
-		push_error("Unsupported for loop syntax (only 'in range()' supported): %s" % line)
+		report_error(current_line-1,"Unsupported for loop syntax (only 'in range()' supported): %s" % line)
 		return "ERROR"
 
 
@@ -424,7 +445,7 @@ func _find_end_of_if_elif_else_chain(start_search_line: int, base_indent: int) -
 		else: # indent > base_indent
 			# This indicates an improperly indented line after a block, or an empty line.
 			# Let's treat it as the end of the chain for safety, though it might indicate a syntax error.
-			push_warning("Unexpected indentation level at line %d, ending if/elif/else chain search." % line_idx)
+			report_error(current_line-1,"Unexpected indentation level at line %d, ending if/elif/else chain search." % line_idx)
 			break
 
 	return line_idx # Returns the index of the first line *after* the entire chain
@@ -547,7 +568,7 @@ func _interpret_check_function(line: String, func_name: String) -> Variant:
 	var param_end = func_call.find(")")
 	
 	if param_start <= 0 or param_end <= param_start:
-		push_error("Invalid check function syntax: " + line)
+		report_error(current_line-1,"Invalid check function syntax: " + line)
 		return null
 	
 	var check_type = func_call.substr(param_start, param_end - param_start).strip_edges()
@@ -566,7 +587,7 @@ func _interpret_check_function(line: String, func_name: String) -> Variant:
 			"checkfront":
 				result = player.checkfront(check_value)
 			_:
-				push_error("Unknown check function: " + func_name)
+				report_error(current_line-1,"Unknown check function: " + func_name)
 				return null
 		
 		# Apply negation if needed
@@ -575,7 +596,7 @@ func _interpret_check_function(line: String, func_name: String) -> Variant:
 		else:
 			return result
 	else:
-		push_error("No player assigned to interpreter")
+		report_error(current_line-1,"No player assigned to interpreter")
 		return null
 
 func _handle_while_loop(line: String, indent_level: int) -> String:
@@ -614,8 +635,8 @@ func _handle_while_loop(line: String, indent_level: int) -> String:
 
 	# --- Handle loop termination ---
 	if is_running and iteration_count >= iteration_limit:
-		push_warning("While loop iteration limit (%d) reached: %s" % [iteration_limit, line])
-		push_error("While loop terminated due to iteration limit.")
+		report_error(current_line-1,"While loop iteration limit (%d) reached: %s" % [iteration_limit, line])
+		report_error(current_line-1,"While loop terminated due to iteration limit.")
 		# Make sure is_running is false if we hit the limit and treat as error
 		is_running = false
 		return "ERROR" # Return ERROR if limit is hit
@@ -635,13 +656,13 @@ func _interpret_pickup_statement(line: String) -> bool:
 	
 	# Verify no arguments were passed
 	if inside.length() > 0:
-		push_error("pickup() doesn't take any parameters.")
+		report_error(current_line-1,"pickup() doesn't take any parameters.")
 		return false
 		
 	if player:
 		return player.pickup()
 	else:
-		push_error("No player assigned to interpreter.")
+		report_error(current_line-1,"No player assigned to interpreter.")
 		return false
 
 func _interpret_var_declaration(line: String) -> bool:
@@ -650,7 +671,7 @@ func _interpret_var_declaration(line: String) -> bool:
 	var after_var = stripped.substr(4, stripped.length() - 4)
 	var pieces = after_var.split("=", true, 1)  # Split only on first =
 	if pieces.size() != 2:
-		push_error("Invalid var syntax: %s" % line)
+		report_error(current_line-1,"Invalid var syntax: %s" % line)
 		return false
 	var var_name = pieces[0].strip_edges()
 	var var_value_raw = pieces[1].strip_edges()
@@ -663,7 +684,7 @@ func _interpret_assignment(line: String) -> bool:
 	var stripped = line.strip_edges()
 	var pieces = stripped.split("=", true, 1)  # Split only on first =
 	if pieces.size() != 2:
-		push_error("Invalid assignment syntax: %s" % line)
+		report_error(current_line-1,"Invalid assignment syntax: %s" % line)
 		return false
 	var var_name = pieces[0].strip_edges()
 	var var_value_raw = pieces[1].strip_edges()
@@ -671,7 +692,7 @@ func _interpret_assignment(line: String) -> bool:
 	
 	# Check if variable exists first
 	if get_var(var_name) == null:
-		push_warning("Creating new variable in assignment: %s" % var_name)
+		report_error(current_line-1,"Creating new variable in assignment: %s" % var_name)
 	
 	set_var(var_name, parsed_value)
 	return true
@@ -680,7 +701,7 @@ func _interpret_gas_statement(line: String) -> bool:
 	# gas() takes no parameters
 	var inside = _extract_between(line, "gas(", ")").strip_edges()
 	if inside.length() > 0:
-		push_error("gas() doesn't take any parameters. Got: '%s'" % inside)
+		report_error(current_line-1,"gas() doesn't take any parameters. Got: '%s'" % inside)
 		return false
 
 	if player:
@@ -690,19 +711,19 @@ func _interpret_gas_statement(line: String) -> bool:
 		# Check if interpreter was stopped while waiting
 		if not is_running:
 			
-			push_warning("Interpreter stopped during gas() await.")
+			push_error("Interpreter stopped during gas() await.")
 			return false # Indicate execution should stop propagating
 		print("INTERPRETER: Finished gas() await")
 		return true # Success
 	else:
-		push_error("No player assigned to interpreter.")
+		report_error(current_line-1,"No player assigned to interpreter.")
 		return false
 
 func _interpret_turnleft_statement(line: String) -> bool:
 	# turnleft() takes no parameters
 	var inside = _extract_between(line, "turnleft(", ")").strip_edges()
 	if inside.length() > 0:
-		push_error("turnleft() doesn't take any parameters. Got: '%s'" % inside)
+		report_error(current_line-1,"turnleft() doesn't take any parameters. Got: '%s'" % inside)
 		return false
 
 	if player:
@@ -710,11 +731,11 @@ func _interpret_turnleft_statement(line: String) -> bool:
 		await player.turn_finished # Wait for the signal indicating the turn is complete
 		# Check if interpreter was stopped while waiting
 		if not is_running:
-			push_warning("Interpreter stopped during turnleft() await.")
+			report_error(current_line-1,"Interpreter stopped during turnleft() await.")
 			return false # Indicate execution should stop propagating
 		return true # Success
 	else:
-		push_error("No player assigned to interpreter.")
+		report_error(current_line-1,"No player assigned to interpreter.")
 		return false
 
 
@@ -722,7 +743,7 @@ func _interpret_turnright_statement(line: String) -> bool:
 	# turnright() takes no parameters
 	var inside = _extract_between(line, "turnright(", ")").strip_edges()
 	if inside.length() > 0:
-		push_error("turnright() doesn't take any parameters. Got: '%s'" % inside)
+		report_error(current_line-1,"turnright() doesn't take any parameters. Got: '%s'" % inside)
 		return false
 
 	if player:
@@ -730,11 +751,11 @@ func _interpret_turnright_statement(line: String) -> bool:
 		await player.turn_finished # Wait for the signal indicating the turn is complete
 		# Check if interpreter was stopped while waiting
 		if not is_running:
-			push_warning("Interpreter stopped during turnright() await.")
+			report_error(current_line-1,"Interpreter stopped during turnright() await.")
 			return false # Indicate execution should stop propagating
 		return true # Success
 	else:
-		push_error("No player assigned to interpreter.")
+		report_error(current_line-1,"No player assigned to interpreter.")
 		return false
 
 
@@ -742,19 +763,19 @@ func _interpret_function_call(line: String) -> bool:
 	# e.g., "my_function(arg1, arg2)"
 	var func_name_end = line.find("(")
 	if func_name_end <= 0:
-		push_error("Invalid function call syntax (cannot find '('): %s" % line)
+		report_error(current_line-1,"Invalid function call syntax (cannot find '('): %s" % line)
 		return false
 
 	var func_name = line.substr(0, func_name_end).strip_edges()
 	if not func_name.is_valid_identifier():
-		push_error("Invalid function name: '%s' in line: %s" % [func_name, line])
+		report_error(current_line-1,"Invalid function name: '%s' in line: %s" % [func_name, line])
 		return false
 
 	var args_str = _extract_between(line, "(", ")") # Assumes simple params
 
 	if not functions.has(func_name):
 		# Could potentially add checks for built-in functions here if needed
-		push_error("Function not found: %s" % func_name)
+		report_error(current_line-1,"Function not found: %s" % func_name)
 		return false
 
 	var func_info = functions[func_name]
@@ -768,12 +789,12 @@ func _interpret_function_call(line: String) -> bool:
 		for arg in arg_strs:
 			var parsed_arg = _parse_value(arg.strip_edges())
 			if parsed_arg == null and arg.strip_edges() != "": # Check if parsing failed
-				push_error("Could not parse argument '%s' for function %s" % [arg.strip_edges(), func_name])
+				report_error(current_line-1,"Could not parse argument '%s' for function %s" % [arg.strip_edges(), func_name])
 				return false
 			arg_values.append(parsed_arg)
 
 	if arg_values.size() != param_names.size():
-		push_error("Wrong number of arguments for function %s: expected %d, got %d" % [func_name, param_names.size(), arg_values.size()])
+		report_error(current_line-1,"Wrong number of arguments for function %s: expected %d, got %d" % [func_name, param_names.size(), arg_values.size()])
 		return false
 
 	# Save current execution position
@@ -785,7 +806,7 @@ func _interpret_function_call(line: String) -> bool:
 		if i < arg_values.size(): # Safety check
 			set_var(param_names[i], arg_values[i])
 		else: # Should not happen if previous size check passed
-			push_error("Internal Error: Argument/Parameter mismatch for %s" % func_name)
+			report_error(current_line-1,"Internal Error: Argument/Parameter mismatch for %s" % func_name)
 			pop_scope()
 			return false
 
@@ -796,7 +817,7 @@ func _interpret_function_call(line: String) -> bool:
 		# Get indent of the 'func ...:' line itself
 		func_def_indent = _count_indent(code_lines[func_def_line_idx])
 	else:
-		push_warning("Could not determine function definition indent for %s" % func_name)
+		report_error(current_line-1,"Could not determine function definition indent for %s" % func_name)
 		# Fallback assumption: function defined at base indent 0
 		func_def_indent = 0
 
@@ -911,8 +932,8 @@ func _evaluate_simple_condition(cond_str: String) -> bool:
 			# Example: if checkleft(PASSENGER): -> true if passenger found, false otherwise
 			# Based on the _evaluate_expression logic, check functions already return bools.
 			# If they returned something else, this check would need adjustment.
-			push_warning("Condition function '%s' did not return a boolean, evaluating truthiness." % cond_str)
-			return bool(evaluated_value) # Basic truthiness check
+			report_error(current_line-1,"Condition function '%s' did not return a boolean, evaluating truthiness." % cond_str)
+			return true if evaluated_value else false
 
 	# Handle standard comparison operators
 	var op = ""
@@ -938,28 +959,28 @@ func _evaluate_simple_condition(cond_str: String) -> bool:
 				" != ": return left != right
 				" > ":
 					if typeof(left) == typeof(right) and (left is int or left is float): return left > right
-					push_warning("Cannot compare '>' on types %s and %s" % [typeof(left), typeof(right)])
+					report_error(current_line-1,"Cannot compare '>' on types %s and %s" % [typeof(left), typeof(right)])
 					return false
 				" < ":
 					if typeof(left) == typeof(right) and (left is int or left is float): return left < right
-					push_warning("Cannot compare '<' on types %s and %s" % [typeof(left), typeof(right)])
+					report_error(current_line-1,"Cannot compare '<' on types %s and %s" % [typeof(left), typeof(right)])
 					return false
 				" >= ":
 					if typeof(left) == typeof(right) and (left is int or left is float): return left >= right
-					push_warning("Cannot compare '>=' on types %s and %s" % [typeof(left), typeof(right)])
+					report_error(current_line-1,"Cannot compare '>=' on types %s and %s" % [typeof(left), typeof(right)])
 					return false
 				" <= ":
 					if typeof(left) == typeof(right) and (left is int or left is float): return left <= right
-					push_warning("Cannot compare '<=' on types %s and %s" % [typeof(left), typeof(right)])
+					report_error(current_line-1,"Cannot compare '<=' on types %s and %s" % [typeof(left), typeof(right)])
 					return false
 		else:
-			push_error("Invalid comparison format: %s" % cond_str)
+			report_error(current_line-1,"Invalid comparison format: %s" % cond_str)
 			return false
 
 	# If no operators found, evaluate the expression and check its truthiness
 	var val = _evaluate_expression(cond_str)
 	# Standard GDScript truthiness:
-	return bool(val)
+	return true if val else false
 
 
 
@@ -984,7 +1005,7 @@ func _evaluate_expression(expr_raw: String) -> Variant:
 				# Handle check functions directly (as they return values used in conditions)
 				if func_name in ["checkleft", "checkright", "checkfront"]:
 					if not player:
-						push_error("No player assigned to interpreter for check function '%s'" % func_name)
+						report_error(current_line-1,"No player assigned to interpreter for check function '%s'" % func_name)
 						return null
 
 					# Evaluate the parameter string - it could be a variable OR a keyword like EDGE
@@ -992,12 +1013,12 @@ func _evaluate_expression(expr_raw: String) -> Variant:
 
 					# ---> Check if _parse_value failed (returned null) <---
 					if param_value == null:
-						push_error("Parameter '%s' for function '%s' evaluated to null. Is it a defined variable or a valid keyword (EDGE, PASSENGER, WALL, DESTINATION)?" % [param_str.strip_edges(), func_name])
+						report_error(current_line-1,"Parameter '%s' for function '%s' evaluated to null. Is it a defined variable or a valid keyword (EDGE, PASSENGER, WALL, DESTINATION)?" % [param_str.strip_edges(), func_name])
 						return null # Return null to indicate error evaluating expression
 
 					# ---> Ensure the evaluated type is string before calling player func <---
 					if not param_value is String:
-						push_error("Parameter '%s' for function '%s' must evaluate to a String (like 'edge', 'passenger'), but got type %s." % [param_str.strip_edges(), func_name, typeof(param_value)])
+						report_error(current_line-1,"Parameter '%s' for function '%s' must evaluate to a String (like 'edge', 'passenger'), but got type %s." % [param_str.strip_edges(), func_name, typeof(param_value)])
 						return null # Return null to indicate error
 
 					# Call the actual player function with the validated String parameter
@@ -1008,7 +1029,7 @@ func _evaluate_expression(expr_raw: String) -> Variant:
 					# The match _ should not be reachable due to the 'in' check above
 				else:
 					# Handle other potential future functions that return values
-					push_error("Unsupported function returning value in expression: %s" % func_name)
+					report_error(current_line-1,"Unsupported function returning value in expression: %s" % func_name)
 					return null
 			# Fall through if the text before '(' wasn't a valid identifier
 		# Fall through if not identified as a known function call returning a value
@@ -1072,7 +1093,7 @@ func _parse_value(value_raw: String) -> Variant:
 			var right = _parse_value(parts[1])
 			if left != null and right != null and (left is int or left is float) and (right is int or right is float):
 				if right == 0.0 or right == 0:
-					push_error("Division by zero: %s" % value_raw)
+					report_error(current_line-1,"Division by zero: %s" % value_raw)
 					return null # Indicate error
 				# Ensure float division if either operand is float
 				return float(left) / float(right)
@@ -1081,7 +1102,7 @@ func _parse_value(value_raw: String) -> Variant:
 	var var_value = get_var(trimmed)
 	if var_value == null:
 		# Variable not found and it wasn't a literal or keyword
-		push_warning("Identifier '%s' not found as variable, literal, or keyword." % trimmed)
+		report_error(current_line-1,"Identifier '%s' not found as variable, literal, or keyword." % trimmed)
 		# Return null explicitly to signify it couldn't be parsed/found
 		return null
 

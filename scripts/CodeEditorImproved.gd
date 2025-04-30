@@ -11,6 +11,12 @@ class_name ImprovedCodeEditor
 var line_counter = null
 @onready var resize_handle = $ResizeHandle
 
+var has_active_error = false
+var error_line_number = -1
+
+var error_popup: PanelContainer = null
+var error_label: RichTextLabel = null
+
 # Line restriction settings
 @export var max_lines: int = 15
 @export var title: String = "Code Editor"
@@ -72,6 +78,23 @@ func _ready() -> void:
 	
 	# Store original line color
 	original_line_color = text_edit.get_theme_color("current_line_color", "TextEdit")
+	_create_error_popup()
+	var interpreter = get_node_or_null("/root/Main/ScriptInterpreter")
+	if interpreter and not interpreter.is_connected("code_error_detected", Callable(self, "_on_code_error_detected")):
+		interpreter.connect("code_error_detected", Callable(self, "_on_code_error_detected"))
+	if not text_edit.is_connected("text_changed", Callable(self, "_on_text_edit_changed")):
+		text_edit.connect("text_changed", Callable(self, "_on_text_edit_changed"))
+
+
+func _on_text_edit_changed() -> void:
+	# Only clear error state if user edits the error line
+	if has_active_error and text_edit.get_caret_line() == error_line_number:
+		# User is editing the line with the error - clear the error state
+		_clear_error_state()
+		
+		# Hide error popup if it's visible
+		if error_popup and error_popup.visible:
+			_dismiss_error_popup()
 
 func _configure_text_edit() -> void:
 	# Basic editor settings
@@ -138,9 +161,13 @@ func create_syntax_highlighter() -> SyntaxHighlighter:
 # Method to highlight the currently executing line
 func highlight_executing_line(line_number: int) -> void:
 	# If line_number is -1, clear any highlighting and return
+	if has_active_error:
+		return
 	if line_number == -1:
 		text_edit.add_theme_color_override("current_line_color", original_line_color)
 		return
+	
+		
 		
 	if line_number >= 0 and line_number < text_edit.get_line_count():
 		# Store the original caret position and selection
@@ -234,7 +261,167 @@ func _on_run_button_pressed() -> void:
 	else:
 		push_error("ScriptInterpreter not found!")
 
+func _create_error_popup() -> void:
+	# Create a panel container with fixed dimensions
+	error_popup = PanelContainer.new()
+	error_popup.name = "ErrorPopup"
+	error_popup.visible = false
+	
+	# Set a fixed size for consistent appearance
+	error_popup.custom_minimum_size = Vector2(400, 80)
+	
+	# Create a VBox to organize content
+	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	
+	# Create a header with title and close button
+	var header = HBoxContainer.new()
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	# Create title label for "Error"
+	var title_label = Label.new()
+	title_label.text = "Error"
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	title_label.add_theme_font_size_override("font_size", 18)
+	title_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.8))
+	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	# Create close button (X)
+	var close_button = Button.new()
+	close_button.text = "×"  # Unicode × symbol
+	close_button.flat = true
+	close_button.add_theme_font_size_override("font_size", 20)
+	close_button.add_theme_color_override("font_color", Color(1.0, 0.8, 0.8))
+	close_button.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
+	close_button.tooltip_text = "Close error message"
+	close_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	close_button.pressed.connect(_dismiss_error_popup)
+	
+	# Add title and close button to header
+	header.add_child(title_label)
+	header.add_child(close_button)
+	
+	# Create separator
+	var separator = HSeparator.new()
+	separator.add_theme_constant_override("separation", 4)
+	
+	# Use RichTextLabel for better text handling
+	error_label = RichTextLabel.new()
+	error_label.bbcode_enabled = true
+	error_label.fit_content = true
+	error_label.scroll_active = true  # Enable scrolling if needed
+	error_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	error_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	# Add components to layout
+	vbox.add_child(header)
+	vbox.add_child(separator)
+	vbox.add_child(error_label)
+	
+	# Create a stylish panel style
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.4, 0.0, 0.0, 0.92)
+	panel_style.border_width_left = 2
+	panel_style.border_width_top = 2
+	panel_style.border_width_right = 2
+	panel_style.border_width_bottom = 2
+	panel_style.border_color = Color(0.8, 0.2, 0.2)
+	panel_style.corner_radius_top_left = 8
+	panel_style.corner_radius_top_right = 8
+	panel_style.corner_radius_bottom_right = 8
+	panel_style.corner_radius_bottom_left = 8
+	panel_style.shadow_color = Color(0, 0, 0, 0.5)
+	panel_style.shadow_size = 4
+	panel_style.shadow_offset = Vector2(0, 2)
+	
+	# Apply the style to the panel
+	error_popup.add_theme_stylebox_override("panel", panel_style)
+	
+	# Add vbox to the panel
+	error_popup.add_child(vbox)
+	
+	# Add the panel to the editor
+	add_child(error_popup)
+	
+	# Add click handler to close popup
+	error_popup.gui_input.connect(_on_error_popup_gui_input)
+	
+func _on_error_popup_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			_dismiss_error_popup()
+			
+# Signal handler for code errors
+func _on_code_error_detected(line_number: int, error_message: String) -> void:
+	# Store the error state
+	has_active_error = true
+	error_line_number = line_number
+	
+	# Highlight the error line in red
+	_highlight_error_line(line_number)
+	
+	# Show error message
+	_show_error_message(error_message)
 
+func _dismiss_error_popup() -> void:
+	# Create a fade-out animation
+	var tween = create_tween()
+	tween.tween_property(error_popup, "modulate", Color(1, 1, 1, 0), 0.2)
+	tween.tween_callback(func(): 
+		error_popup.visible = false
+		_clear_error_state()  # Clear error state when popup is dismissed
+	)
+	
+var current_error_line = -1
+func _highlight_error_line(line_number: int) -> void:
+	if line_number < 0 or line_number >= text_edit.get_line_count():
+		return
+	
+	# Store the error line number
+	error_line_number = line_number
+	
+	# Create a bright red color for errors
+	var error_color = Color(1.0, 0.2, 0.2, 0.5)  # Semi-transparent red
+	
+	# Set error highlight - IMPORTANT: Only if we have an active error
+	if has_active_error:
+		text_edit.add_theme_color_override("current_line_color", error_color)
+	
+	# Move the caret to the error line
+	text_edit.set_caret_line(line_number)
+	
+	# Center view on error
+	text_edit.center_viewport_to_caret()
+	
+func _clear_error_state() -> void:
+	# Reset highlighting
+	text_edit.add_theme_color_override("current_line_color", original_line_color)
+	has_active_error = false
+	error_line_number = -1
+
+func _show_error_message(message: String) -> void:
+	if error_popup == null:
+		_create_error_popup()
+	
+	# Set error message
+	error_label.text = message
+	
+	# Position at the bottom middle of the editor
+	error_popup.position = Vector2(
+		(size.x - error_popup.size.x) / 2,
+		size.y - error_popup.size.y - 40
+	)
+	
+	# Make sure it's visible
+	error_popup.visible = true
+	
+	# Add a subtle animation effect
+	error_popup.modulate = Color(1, 1, 1, 0)
+	var tween = create_tween()
+	tween.tween_property(error_popup, "modulate", Color(1, 1, 1, 1), 0.3)
+	
+	
 func _on_text_changed() -> void:
 	
 	# Check for line limit

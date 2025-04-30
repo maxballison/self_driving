@@ -69,11 +69,11 @@ grow_vertical = 2
 tab_alignment = 1
 current_tab = 0
 
-[node name="TutorialTab" type="Control" parent="TabContainer"]
+[node name="Tutorial" type="Control" parent="TabContainer"]
 layout_mode = 2
 metadata/_tab_index = 0
 
-[node name="MessageContainer" type="Panel" parent="TabContainer/TutorialTab"]
+[node name="MessageContainer" type="Panel" parent="TabContainer/Tutorial"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -81,7 +81,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="RichTextLabel" type="RichTextLabel" parent="TabContainer/TutorialTab/MessageContainer"]
+[node name="RichTextLabel" type="RichTextLabel" parent="TabContainer/Tutorial/MessageContainer"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -96,12 +96,12 @@ bbcode_enabled = true
 text = "Welcome to the tutorial! The text will appear here with a typing effect."
 scroll_following = true
 
-[node name="DocsTab" type="Control" parent="TabContainer"]
+[node name="Documentation" type="Control" parent="TabContainer"]
 visible = false
 layout_mode = 2
 metadata/_tab_index = 1
 
-[node name="HSplitContainer" type="HSplitContainer" parent="TabContainer/DocsTab"]
+[node name="HSplitContainer" type="HSplitContainer" parent="TabContainer/Documentation"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -110,7 +110,7 @@ grow_horizontal = 2
 grow_vertical = 2
 split_offset = 100
 
-[node name="FunctionList" type="ItemList" parent="TabContainer/DocsTab/HSplitContainer"]
+[node name="FunctionList" type="ItemList" parent="TabContainer/Documentation/HSplitContainer"]
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -118,12 +118,12 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 0.4
 auto_height = true
 
-[node name="FunctionDescription" type="Panel" parent="TabContainer/DocsTab/HSplitContainer"]
+[node name="FunctionDescription" type="Panel" parent="TabContainer/Documentation/HSplitContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="RichTextLabel" type="RichTextLabel" parent="TabContainer/DocsTab/HSplitContainer/FunctionDescription"]
+[node name="RichTextLabel" type="RichTextLabel" parent="TabContainer/Documentation/HSplitContainer/FunctionDescription"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

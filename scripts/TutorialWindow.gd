@@ -56,8 +56,8 @@ func _ready() -> void:
 	# Find tab system
 	tabs = get_node_or_null("TabContainer")
 	if tabs:
-		tutorial_tab = tabs.get_node_or_null("TutorialTab")
-		docs_tab = tabs.get_node_or_null("DocsTab")
+		tutorial_tab = tabs.get_node_or_null("Tutorial")
+		docs_tab = tabs.get_node_or_null("Documentation")
 	
 	# Initialize UI components for tutorial tab
 	if tutorial_tab:
@@ -66,7 +66,7 @@ func _ready() -> void:
 			message_text = message_container.get_node_or_null("RichTextLabel")
 	else:
 		# Fallback to direct path
-		message_text = get_node_or_null("TabContainer/TutorialTab/MessageContainer/RichTextLabel")
+		message_text = get_node_or_null("TabContainer/Tutorial/MessageContainer/RichTextLabel")
 	
 	# Initialize UI components for docs tab
 	if docs_tab:
@@ -74,8 +74,8 @@ func _ready() -> void:
 		function_description = docs_tab.get_node_or_null("HSplitContainer/FunctionDescription/RichTextLabel")
 	else:
 		# Fallback to direct path
-		function_list = get_node_or_null("TabContainer/DocsTab/HSplitContainer/FunctionList")
-		function_description = get_node_or_null("TabContainer/DocsTab/HSplitContainer/FunctionDescription/RichTextLabel")
+		function_list = get_node_or_null("TabContainer/Documentation/HSplitContainer/FunctionList")
+		function_description = get_node_or_null("TabContainer/Documentation/HSplitContainer/FunctionDescription/RichTextLabel")
 	
 	print("Function list found:", function_list != null)
 	print("Function description found:", function_description != null)
@@ -119,17 +119,17 @@ func ensure_ui_references() -> void:
 	
 	# Check message_text
 	if message_text == null:
-		message_text = get_node_or_null("TabContainer/TutorialTab/MessageContainer/RichTextLabel")
+		message_text = get_node_or_null("TabContainer/Tutorial/MessageContainer/RichTextLabel")
 		print("Message text found:", message_text != null)
 	
 	# Check function_list
 	if function_list == null:
-		function_list = get_node_or_null("TabContainer/DocsTab/HSplitContainer/FunctionList")
+		function_list = get_node_or_null("TabContainer/Documentation/HSplitContainer/FunctionList")
 		print("Function list found:", function_list != null)
 	
 	# Check function_description
 	if function_description == null:
-		function_description = get_node_or_null("TabContainer/DocsTab/HSplitContainer/FunctionDescription/RichTextLabel")
+		function_description = get_node_or_null("TabContainer/Documentation/HSplitContainer/FunctionDescription/RichTextLabel")
 		print("Function description found:", function_description != null)
 
 # Safe setter for text in message display
@@ -138,8 +138,8 @@ func safe_set_text(text: String) -> void:
 		message_text.text = text
 	else:
 		# Try to get the node again with correct path in tab structure
-		if has_node("TabContainer/TutorialTab/MessageContainer/RichTextLabel"):
-			message_text = get_node("TabContainer/TutorialTab/MessageContainer/RichTextLabel")
+		if has_node("TabContainer/Tutorial/MessageContainer/RichTextLabel"):
+			message_text = get_node("TabContainer/Tutorial/MessageContainer/RichTextLabel")
 			message_text.text = text
 		else:
 			push_error("Failed to set text - RichTextLabel not found")

@@ -2,15 +2,15 @@
   "res://GeneratedLevels/level_1.tscn": {
 	"messages": [
 	  "[b]Welcome to the Self-Driving Taxi Adventure![/b]\n\nIn this game, you'll write code to control your taxi and navigate through various challenges.",
-	  "Use the [color=#80CCFF]Code Editor[/color] to write instructions for your taxi.\n\nThe basic movement command is:\n[code]drive()[/code] - Move forward in the direction you're facing",
-	  "Try writing a simple program to move your taxi:\n[code]drive()[/code]\n\nThen click the [color=#80FF80]Run[/color] button to execute your code.",
+	  "Use the [color=#80CCFF]Code Editor[/color] to write instructions for your taxi.\n\nThe basic movement command is:\n[code]gas()[/code] - Move forward in the direction you're facing",
+	  "Try writing a simple program to move your taxi:\n[code]gas()[/code]\n\nThen click the [color=#80FF80]Run[/color] button to execute your code.",
 	  "Watch carefully as each line executes! The current command being run will briefly highlight in the editor.\n\nYour goal is to reach the door at the end of the level. Good luck!"
 	],
 	"functions": [
 	  {
-		"name": "drive()",
-		"description": "Moves the taxi forward exactly one tile in the direction it's currently facing. The taxi will travel in a straight line until it reaches the next grid position.\n\nEach drive() command corresponds to exactly one move on the grid.",
-		"example": "// Move forward three tiles\ndrive()\ndrive()\ndrive()",
+		"name": "gas()",
+		"description": "Moves the taxi forward exactly one tile in the direction it's currently facing. The taxi will travel in a straight line until it reaches the next grid position.\n\nEach gas() command corresponds to exactly one move on the grid.",
+		"example": "// Move forward three tiles\ngas()\ngas()\ngas()",
 		"category": "Movement"
 	  }
 	]
@@ -20,25 +20,25 @@
 	"messages": [
 	  "[b]Level 2: Passengers & Deliveries[/b]\n\nIn this level, you'll learn to pick up passengers and deliver them to their destinations.",
 	  "When a passenger is nearby, you can use:\n[code]pickup()[/code]\n\nThe passenger will be loaded into your taxi, and a colored indicator will appear above your taxi showing their destination.",
-	  "Drive to the matching colored destination and use:\n[code]dropoff()[/code]\n\nTry this sequence:\n[code]drive()\npickup()\ndrive()\ndropoff()[/code]"
+	  "Drive to the matching colored destination and use:\n[code]dropoff()[/code]\n\nTry this sequence:\n[code]gas()\npickup()\ngas()\ndropoff()[/code]"
 	],
 	"functions": [
 	  {
-		"name": "drive()",
-		"description": "Moves the taxi forward exactly one tile in the direction it's currently facing. The taxi will travel in a straight line until it reaches the next grid position.\n\nEach drive() command corresponds to exactly one move on the grid.",
-		"example": "// Move forward three tiles\ndrive()\ndrive()\ndrive()",
+		"name": "gas()",
+		"description": "Moves the taxi forward exactly one tile in the direction it's currently facing. The taxi will travel in a straight line until it reaches the next grid position.\n\nEach gas() command corresponds to exactly one move on the grid.",
+		"example": "// Move forward three tiles\ngas()\ngas()\ngas()",
 		"category": "Movement"
 	  },
 	  {
 		"name": "pickup()",
 		"description": "Picks up a passenger when your taxi is adjacent to them. The passenger must be directly next to your taxi (not diagonally).\n\nWhen a passenger is picked up, a colored indicator appears above your taxi showing their destination color. Your taxi can hold multiple passengers at once.",
-		"example": "// Pick up a passenger\ndrive()  // Move to the passenger\npickup() // Pick them up",
+		"example": "// Pick up a passenger\ngas()  // Move to the passenger\npickup() // Pick them up",
 		"category": "Passengers"
 	  },
 	  {
 		"name": "dropoff()",
 		"description": "Drops off a passenger at their destination when your taxi is at a matching colored destination point. The function automatically matches passengers to their correct destinations by color.\n\nIf you have multiple passengers, it will drop off the passenger whose destination matches the current location.",
-		"example": "// Drop off a passenger\ndrive()   // Move to destination\ndropoff() // Drop off passenger",
+		"example": "// Drop off a passenger\ngas()   // Move to destination\ndropoff() // Drop off passenger",
 		"category": "Passengers"
 	  }
 	]
@@ -48,38 +48,38 @@
 	"messages": [
 	  "[b]Level 3: Changing Direction[/b]\n\nThis level introduces turning to change your taxi's direction.",
 	  "Use these commands to rotate your taxi:\n[code]turnleft()[/code] - Rotate 90° counter-clockwise\n[code]turnright()[/code] - Rotate 90° clockwise",
-	  "Try combining driving and turning to navigate this level:\n[code]drive()\nturnright()\ndrive()\nturnleft()\ndrive()[/code]",
-	  "Remember that after turning, [code]drive()[/code] will move in your new direction. Plan your route carefully to reach the destination!"
+	  "Try combining driving and turning to navigate this level:\n[code]gas()\nturnright()\ngas()\nturnleft()\ngas()[/code]",
+	  "Remember that after turning, [code]gas()[/code] will move in your new direction. Plan your route carefully to reach the destination!"
 	],
 	"functions": [
 	  {
-		"name": "drive()",
-		"description": "Moves the taxi forward exactly one tile in the direction it's currently facing. The taxi will travel in a straight line until it reaches the next grid position.\n\nEach drive() command corresponds to exactly one move on the grid.",
-		"example": "// Move forward three tiles\ndrive()\ndrive()\ndrive()",
+		"name": "gas()",
+		"description": "Moves the taxi forward exactly one tile in the direction it's currently facing. The taxi will travel in a straight line until it reaches the next grid position.\n\nEach gas() command corresponds to exactly one move on the grid.",
+		"example": "// Move forward three tiles\ngas()\ngas()\ngas()",
 		"category": "Movement"
 	  },
 	  {
 		"name": "pickup()",
 		"description": "Picks up a passenger when your taxi is adjacent to them. The passenger must be directly next to your taxi (not diagonally).\n\nWhen a passenger is picked up, a colored indicator appears above your taxi showing their destination color. Your taxi can hold multiple passengers at once.",
-		"example": "// Pick up a passenger\ndrive()  // Move to the passenger\npickup() // Pick them up",
+		"example": "// Pick up a passenger\ngas()  // Move to the passenger\npickup() // Pick them up",
 		"category": "Passengers"
 	  },
 	  {
 		"name": "dropoff()",
 		"description": "Drops off a passenger at their destination when your taxi is at a matching colored destination point. The function automatically matches passengers to their correct destinations by color.\n\nIf you have multiple passengers, it will drop off the passenger whose destination matches the current location.",
-		"example": "// Drop off a passenger\ndrive()   // Move to destination\ndropoff() // Drop off passenger",
+		"example": "// Drop off a passenger\ngas()   // Move to destination\ndropoff() // Drop off passenger",
 		"category": "Passengers"
 	  },
 	  {
 		"name": "turnleft()",
-		"description": "Rotates the taxi 90 degrees counter-clockwise (to the left). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent drive() commands will move in the new direction.",
-		"example": "// Turn left and drive\ndrive()\nturnleft()\ndrive() // Now moves in a new direction",
+		"description": "Rotates the taxi 90 degrees counter-clockwise (to the left). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent gas() commands will move in the new direction.",
+		"example": "// Turn left and drive\ngas()\nturnleft()\ngas() // Now moves in a new direction",
 		"category": "Movement"
 	  },
 	  {
 		"name": "turnright()",
-		"description": "Rotates the taxi 90 degrees clockwise (to the right). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent drive() commands will move in the new direction.",
-		"example": "// Navigate around a corner\ndrive()\nturnright()\ndrive() // Now moves in a new direction",
+		"description": "Rotates the taxi 90 degrees clockwise (to the right). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent gas() commands will move in the new direction.",
+		"example": "// Navigate around a corner\ngas()\nturnright()\ngas() // Now moves in a new direction",
 		"category": "Movement"
 	  }
 	]
@@ -88,51 +88,82 @@
   "res://GeneratedLevels/level_4.tscn": {
 	"messages": [
 	  "[b]Level 4: Navigation Challenge[/b]\n\nThis level is more complex and requires careful planning.",
-	  "Remember all the commands you've learned:\n[code]drive()[/code] - Move forward\n[code]turnleft()[/code] - Rotate left\n[code]turnright()[/code] - Rotate right\n[code]brake()[/code] - Stop immediately",
+	  "Remember all the commands you've learned:\n[code]gas()[/code] - Move forward\n[code]turnleft()[/code] - Rotate left\n[code]turnright()[/code] - Rotate right\n[code]brake()[/code] - Stop immediately",
+	  "New in this level are sensing commands:\n[code]checkfront()[/code] - Check if path ahead is clear\n[code]checkleft()[/code] - Check if path to left is clear\n[code]checkright()[/code] - Check if path to right is clear",
 	  "The layout is more complex, requiring careful navigation. Plan your route before writing your code.",
 	  "If you get stuck, try breaking down the problem into smaller steps. Testing sections of your route before combining them can help solve tricky navigation challenges."
 	],
 	"functions": [
 	  {
-		"name": "drive()",
-		"description": "Moves the taxi forward exactly one tile in the direction it's currently facing. The taxi will travel in a straight line until it reaches the next grid position.\n\nEach drive() command corresponds to exactly one move on the grid.",
-		"example": "// Move forward three tiles\ndrive()\ndrive()\ndrive()",
+		"name": "gas()",
+		"description": "Moves the taxi forward exactly one tile in the direction it's currently facing. The taxi will travel in a straight line until it reaches the next grid position.\n\nEach gas() command corresponds to exactly one move on the grid.",
+		"example": "// Move forward three tiles\ngas()\ngas()\ngas()",
 		"category": "Movement"
 	  },
 	  {
 		"name": "pickup()",
 		"description": "Picks up a passenger when your taxi is adjacent to them. The passenger must be directly next to your taxi (not diagonally).\n\nWhen a passenger is picked up, a colored indicator appears above your taxi showing their destination color. Your taxi can hold multiple passengers at once.",
-		"example": "// Pick up a passenger\ndrive()  // Move to the passenger\npickup() // Pick them up",
+		"example": "// Pick up a passenger\ngas()  // Move to the passenger\npickup() // Pick them up",
 		"category": "Passengers"
 	  },
 	  {
 		"name": "dropoff()",
 		"description": "Drops off a passenger at their destination when your taxi is at a matching colored destination point. The function automatically matches passengers to their correct destinations by color.\n\nIf you have multiple passengers, it will drop off the passenger whose destination matches the current location.",
-		"example": "// Drop off a passenger\ndrive()   // Move to destination\ndropoff() // Drop off passenger",
+		"example": "// Drop off a passenger\ngas()   // Move to destination\ndropoff() // Drop off passenger",
 		"category": "Passengers"
 	  },
 	  {
 		"name": "turnleft()",
-		"description": "Rotates the taxi 90 degrees counter-clockwise (to the left). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent drive() commands will move in the new direction.",
-		"example": "// Turn left and drive\ndrive()\nturnleft()\ndrive() // Now moves in a new direction",
+		"description": "Rotates the taxi 90 degrees counter-clockwise (to the left). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent gas() commands will move in the new direction.",
+		"example": "// Turn left and drive\ngas()\nturnleft()\ngas() // Now moves in a new direction",
 		"category": "Movement"
 	  },
 	  {
 		"name": "turnright()",
-		"description": "Rotates the taxi 90 degrees clockwise (to the right). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent drive() commands will move in the new direction.",
-		"example": "// Navigate around a corner\ndrive()\nturnright()\ndrive() // Now moves in a new direction",
+		"description": "Rotates the taxi 90 degrees clockwise (to the right). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent gas() commands will move in the new direction.",
+		"example": "// Navigate around a corner\ngas()\nturnright()\ngas() // Now moves in a new direction",
 		"category": "Movement"
 	  },
 	  {
 		"name": "brake()",
-		"description": "Stops the taxi immediately. This can be useful for precise positioning or to stop at a specific point in your code.\n\nUnlike drive(), the brake() command doesn't move the taxi - it just ensures it's completely stopped.",
-		"example": "// Move and then stop\ndrive()\nbrake() // Make sure we're completely stopped",
+		"description": "Stops the taxi immediately. This can be useful for precise positioning or to stop at a specific point in your code.\n\nUnlike gas(), the brake() command doesn't move the taxi - it just ensures it's completely stopped.",
+		"example": "// Move and then stop\ngas()\nbrake() // Make sure we're completely stopped",
 		"category": "Movement"
+	  },
+	  {
+		"name": "checkfront()",
+		"description": "Checks if the path directly in front of the taxi is clear. Returns true if the path is clear (no obstacles), and false if there's an obstacle.\n\nUse this with if statements to make decisions based on what's ahead.",
+		"example": "// Check before moving\nif checkfront():\n    gas()  // Path is clear, move forward\nelse:\n    turnright()  // Path blocked, change direction",
+		"category": "Sensing"
+	  },
+	  {
+		"name": "checkleft()",
+		"description": "Checks if the path to the left of the taxi is clear. Returns true if the path is clear (no obstacles), and false if there's an obstacle.\n\nThis checks the tile that would be directly to your left after a turnleft() command.",
+		"example": "// Check left before turning that way\nif checkleft():\n    turnleft()\n    gas()  // Safe to turn and move left\nelse:\n    gas()  // Left is blocked, continue forward",
+		"category": "Sensing"
+	  },
+	  {
+		"name": "checkright()",
+		"description": "Checks if the path to the right of the taxi is clear. Returns true if the path is clear (no obstacles), and false if there's an obstacle.\n\nThis checks the tile that would be directly to your right after a turnright() command.",
+		"example": "// Check right before turning that way\nif checkright():\n    turnright()\n    gas()  // Safe to turn and move right\nelse:\n    gas()  // Right is blocked, continue forward",
+		"category": "Sensing"
+	  },
+	  {
+		"name": "if/elif/else statements",
+		"description": "Conditional statements let your code make decisions. An if statement executes code only when a condition is true. You can add elif (else if) blocks for additional conditions, and an else block that executes when no conditions are true.\n\nSyntax:\nif condition1:\n    [code block 1]\nelif condition2:\n    [code block 2]\nelse:\n    [code block 3]",
+		"example": "// Navigate based on available paths\nif checkfront():\n    gas()  // Path ahead is clear\nelif checkleft():\n    turnleft()\n    gas()  // Left path is clear\nelif checkright():\n    turnright()\n    gas()  // Right path is clear\nelse:\n    turnleft()\n    turnleft()  // All paths blocked, turn around",
+		"category": "Control Flow"
+	  },
+	  {
+		"name": "while loop",
+		"description": "The while loop repeats a block of code as long as a condition is true. It's useful when you don't know in advance how many repetitions you need.\n\nSyntax: while condition:\n    [indented code block]\n\nThe condition is checked before each iteration. If it's false, the loop exits.",
+		"example": "// Drive forward until path is blocked\nwhile checkfront():\n    gas()\n\n// Now we've reached an obstacle",
+		"category": "Control Flow"
 	  },
 	  {
 		"name": "for loop",
 		"description": "The for loop allows you to repeat a block of code a specific number of times. Use it when you need to execute the same actions multiple times.\n\nSyntax: for i in range(count):\n    [indented code block]\n\nThe code block is repeated 'count' times, with 'i' taking values from 0 to count-1.",
-		"example": "// Move forward 3 times using a loop\nfor i in range(3):\n    drive()\n\n// This is the same as:\n// drive()\n// drive()\n// drive()",
+		"example": "// Move forward 3 times using a loop\nfor i in range(3):\n    gas()\n\n// This is the same as:\n// gas()\n// gas()\n// gas()",
 		"category": "Control Flow"
 	  }
 	]
@@ -147,57 +178,75 @@
 	],
 	"functions": [
 	  {
-		"name": "drive()",
-		"description": "Moves the taxi forward exactly one tile in the direction it's currently facing. The taxi will travel in a straight line until it reaches the next grid position.\n\nEach drive() command corresponds to exactly one move on the grid.",
-		"example": "// Move forward three tiles\ndrive()\ndrive()\ndrive()",
+		"name": "gas()",
+		"description": "Moves the taxi forward exactly one tile in the direction it's currently facing. The taxi will travel in a straight line until it reaches the next grid position.\n\nEach gas() command corresponds to exactly one move on the grid.",
+		"example": "// Move forward three tiles\ngas()\ngas()\ngas()",
 		"category": "Movement"
 	  },
 	  {
 		"name": "pickup()",
 		"description": "Picks up a passenger when your taxi is adjacent to them. The passenger must be directly next to your taxi (not diagonally).\n\nWhen a passenger is picked up, a colored indicator appears above your taxi showing their destination color. Your taxi can hold multiple passengers at once.",
-		"example": "// Pick up a passenger\ndrive()  // Move to the passenger\npickup() // Pick them up",
+		"example": "// Pick up a passenger\ngas()  // Move to the passenger\npickup() // Pick them up",
 		"category": "Passengers"
 	  },
 	  {
 		"name": "dropoff()",
 		"description": "Drops off a passenger at their destination when your taxi is at a matching colored destination point. The function automatically matches passengers to their correct destinations by color.\n\nIf you have multiple passengers, it will drop off the passenger whose destination matches the current location.",
-		"example": "// Drop off a passenger\ndrive()   // Move to destination\ndropoff() // Drop off passenger",
+		"example": "// Drop off a passenger\ngas()   // Move to destination\ndropoff() // Drop off passenger",
 		"category": "Passengers"
 	  },
 	  {
 		"name": "turnleft()",
-		"description": "Rotates the taxi 90 degrees counter-clockwise (to the left). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent drive() commands will move in the new direction.",
-		"example": "// Turn left and drive\ndrive()\nturnleft()\ndrive() // Now moves in a new direction",
+		"description": "Rotates the taxi 90 degrees counter-clockwise (to the left). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent gas() commands will move in the new direction.",
+		"example": "// Turn left and drive\ngas()\nturnleft()\ngas() // Now moves in a new direction",
 		"category": "Movement"
 	  },
 	  {
 		"name": "turnright()",
-		"description": "Rotates the taxi 90 degrees clockwise (to the right). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent drive() commands will move in the new direction.",
-		"example": "// Navigate around a corner\ndrive()\nturnright()\ndrive() // Now moves in a new direction",
+		"description": "Rotates the taxi 90 degrees clockwise (to the right). This changes the direction the taxi is facing without moving it.\n\nAfter turning, subsequent gas() commands will move in the new direction.",
+		"example": "// Navigate around a corner\ngas()\nturnright()\ngas() // Now moves in a new direction",
 		"category": "Movement"
 	  },
 	  {
 		"name": "brake()",
-		"description": "Stops the taxi immediately. This can be useful for precise positioning or to stop at a specific point in your code.\n\nUnlike drive(), the brake() command doesn't move the taxi - it just ensures it's completely stopped.",
-		"example": "// Move and then stop\ndrive()\nbrake() // Make sure we're completely stopped",
+		"description": "Stops the taxi immediately. This can be useful for precise positioning or to stop at a specific point in your code.\n\nUnlike gas(), the brake() command doesn't move the taxi - it just ensures it's completely stopped.",
+		"example": "// Move and then stop\ngas()\nbrake() // Make sure we're completely stopped",
 		"category": "Movement"
+	  },
+	  {
+		"name": "checkfront()",
+		"description": "Checks if the path directly in front of the taxi is clear. Returns true if the path is clear (no obstacles), and false if there's an obstacle.\n\nUse this with if statements to make decisions based on what's ahead.",
+		"example": "// Check before moving\nif checkfront():\n    gas()  // Path is clear, move forward\nelse:\n    turnright()  // Path blocked, change direction",
+		"category": "Sensing"
+	  },
+	  {
+		"name": "checkleft()",
+		"description": "Checks if the path to the left of the taxi is clear. Returns true if the path is clear (no obstacles), and false if there's an obstacle.\n\nThis checks the tile that would be directly to your left after a turnleft() command.",
+		"example": "// Check left before turning that way\nif checkleft():\n    turnleft()\n    gas()  // Safe to turn and move left\nelse:\n    gas()  // Left is blocked, continue forward",
+		"category": "Sensing"
+	  },
+	  {
+		"name": "checkright()",
+		"description": "Checks if the path to the right of the taxi is clear. Returns true if the path is clear (no obstacles), and false if there's an obstacle.\n\nThis checks the tile that would be directly to your right after a turnright() command.",
+		"example": "// Check right before turning that way\nif checkright():\n    turnright()\n    gas()  // Safe to turn and move right\nelse:\n    gas()  // Right is blocked, continue forward",
+		"category": "Sensing"
 	  },
 	  {
 		"name": "for loop",
 		"description": "The for loop allows you to repeat a block of code a specific number of times. Use it when you need to execute the same actions multiple times.\n\nSyntax: for i in range(count):\n    [indented code block]\n\nThe code block is repeated 'count' times, with 'i' taking values from 0 to count-1.",
-		"example": "// Move forward 3 times using a loop\nfor i in range(3):\n    drive()\n\n// This is the same as:\n// drive()\n// drive()\n// drive()",
+		"example": "// Move forward 3 times using a loop\nfor i in range(3):\n    gas()\n\n// This is the same as:\n// gas()\n// gas()\n// gas()",
 		"category": "Control Flow"
 	  },
 	  {
 		"name": "while loop",
 		"description": "The while loop repeats a block of code as long as a condition is true. It's useful when you don't know in advance how many repetitions you need.\n\nSyntax: while condition:\n    [indented code block]\n\nThe condition is checked before each iteration. If it's false, the loop exits.",
-		"example": "// Example of a counter with while loop\nvar count = 0\nwhile count < 3:\n    drive()\n    count = count + 1",
+		"example": "// Drive forward until path is blocked\nwhile checkfront():\n    gas()\n\n// Now we've reached an obstacle",
 		"category": "Control Flow"
 	  },
 	  {
-		"name": "if statement",
-		"description": "The if statement allows your code to make decisions. It executes a block of code only if a condition is true.\n\nSyntax: if condition:\n    [indented code block]\n\nYou can also add an else block that executes when the condition is false.",
-		"example": "// Basic if statement\nif passenger_nearby:\n    pickup()\nelse:\n    drive() // No passenger, keep driving",
+		"name": "if/elif/else statements",
+		"description": "Conditional statements let your code make decisions. An if statement executes code only when a condition is true. You can add elif (else if) blocks for additional conditions, and an else block that executes when no conditions are true.\n\nSyntax:\nif condition1:\n    [code block 1]\nelif condition2:\n    [code block 2]\nelse:\n    [code block 3]",
+		"example": "// Navigate based on available paths\nif checkfront():\n    gas()  // Path ahead is clear\nelif checkleft():\n    turnleft()\n    gas()  // Left path is clear\nelif checkright():\n    turnright()\n    gas()  // Right path is clear\nelse:\n    turnleft()\n    turnleft()  // All paths blocked, turn around",
 		"category": "Control Flow"
 	  }
 	]
